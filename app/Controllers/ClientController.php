@@ -125,7 +125,6 @@ class ClientController extends BaseController
             'client_id' => $this->session->get('client_id'),
             'type_operation_id' => $typeDepot['id'],
             'montant' => $montant,
-            'description' => 'Dépôt automatique',
         ];
 
         $result = $this->operationModel->createOperation($operationData);
@@ -174,7 +173,6 @@ class ClientController extends BaseController
             'type_operation_id' => $typeRetrait['id'],
             'montant' => $montant,
             'frais' => $frais,
-            'description' => 'Retrait automatique',
         ];
 
         $result = $this->operationModel->createOperation($operationData);
@@ -198,7 +196,10 @@ class ClientController extends BaseController
             return redirect()->to('/client/login');
         }
 
-        $data = ['title' => 'Transfert - Mobile Money'];
+        $data = [
+            'title' => 'Transfert - Mobile Money',
+            'prefixes' => $this->configurationModel->getPrefixes()
+        ];
         return view('client/transfert', $data);
     }
 
@@ -208,7 +209,7 @@ class ClientController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Non connecté']);
         }
 
-        $montant = $this->request->getPost('montant');
+        $montant = (float) $this->request->getPost('montant');
         $destinatairesRaw = $this->request->getPost('destinataires');
         $inclureFrais = $this->request->getPost('inclure_frais') ? true : false;
 
@@ -227,14 +228,10 @@ class ClientController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Aucun numéro destinataire valide trouvé']);
         }
 
-        // Vérifier si le destinataire est un autre opérateur
-        $operateurModel = new OperateurModel();
-        $prefixe = substr($destinataire, 0, 3);
-        $operateurDest = $operateurModel->findByPrefixe($prefixe);
-
-        // Vérifier les préfixes valides
-        if (!$this->configurationModel->isValidPrefix($destinataire)) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Préfixe du destinataire invalide']);
+        // Récupérer le type transfert
+        $typeTransfert = $this->typeOperationModel->findByLibelle('transfert');
+        if (!$typeTransfert) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Type d\'opération non trouvé']);
         }
 
         $clientTelephone = $this->session->get('client_telephone');
@@ -266,56 +263,39 @@ class ClientController extends BaseController
             $destinataireClients[] = $destClient;
         }
 
-        $typeTransfert = $this->typeOperationModel->findByLibelle('transfert');
-        if (!$typeTransfert) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Type d\'opération non trouvé']);
+        // Diviser le montant entre les destinataires
+        $shares = $this->splitAmountByRecipients($montant, count($destinataires));
+
+        // Calculer les frais pour chaque transfert
+        $totalFrais = 0;
+        $fraisParDestinataire = [];
+        foreach ($shares as $share) {
+            $frais = $this->fraisBaremeModel->calculerFrais($typeTransfert['id'], $share);
+            $fraisParDestinataire[] = $frais;
+            $totalFrais += $frais;
         }
 
-        // Calculer les frais
-        $frais = $this->fraisBaremeModel->calculerFrais($typeTransfert['id'], $montant);
-        
-        // Calculer la commission si vers un autre opérateur
-        $commission = 0;
-        $operateurDestId = null;
-        if ($operateurDest && $operateurDest['id'] != 1) {
-            $commission = ($montant * $operateurDest['commission_pourcentage']) / 100;
-            $operateurDestId = $operateurDest['id'];
-        }
+        // Calculer le total à débiter
+        $totalDebit = $inclureFrais ? $montant + $totalFrais : $montant;
 
-        $operationData = [
-            'client_id' => $this->session->get('client_id'),
-            'type_operation_id' => $typeTransfert['id'],
-            'montant' => $montant,
-            'frais' => $frais,
-            'client_destinataire_id' => $destinataireClient['id'],
-            'operateur_destinataire_id' => $operateurDestId,
-            'frais_commission' => $commission,
-        ];
-
-        $result = $this->operationModel->createOperation($operationData);
-
-        if ($result['success']) {
-            $this->session->set('client_solde', $result['nouveau_solde']);
+        // Vérifier le solde
+        $sender = $this->clientModel->find($clientId);
+        if ($sender['solde'] < $totalDebit) {
             return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Transfert effectué avec succès',
-                'nouveau_solde' => number_format($result['nouveau_solde'], 2, ',', ' ') . ' Ar',
-                'frais' => number_format($frais, 2, ',', ' ') . ' Ar',
-                'commission' => number_format($commission, 2, ',', ' ') . ' Ar',
+                'success' => false, 
+                'message' => 'Solde insuffisant. Total débité : ' . number_format($totalDebit, 2, ',', ' ') . ' Ar'
             ]);
         }
 
-        $sender = $this->clientModel->find($clientId);
-        $totalDebit = array_sum($shares);
-        if ($inclureFrais) {
-            $totalDebit += $totalFrais;
-        }
-
-        if ($sender['solde'] < $totalDebit) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Solde insuffisant pour effectuer ce transfert. Total débité : ' . number_format($totalDebit, 2, ',', ' ') . ' Ar']);
-        }
-
-        $result = $this->processMultipleTransfers($sender, $destinataireClients, $shares, $fraisParDestinataire, $typeTransfert['id'], $inclureFrais);
+        // Traiter les transferts multiples
+        $result = $this->processMultipleTransfers(
+            $sender, 
+            $destinataireClients, 
+            $shares, 
+            $fraisParDestinataire, 
+            $typeTransfert['id'], 
+            $inclureFrais
+        );
 
         if (!$result['success']) {
             return $this->response->setJSON(['success' => false, 'message' => $result['message']]);
@@ -330,7 +310,6 @@ class ClientController extends BaseController
             'frais' => number_format($totalFrais, 2, ',', ' ') . ' Ar',
             'total_debite' => number_format($totalDebit, 2, ',', ' ') . ' Ar',
             'inclure_frais' => $inclureFrais,
-            'frais_pris_en_charge' => $inclureFrais,
         ]);
     }
 
@@ -390,6 +369,7 @@ class ClientController extends BaseController
                 return ['success' => false, 'message' => 'Solde insuffisant pendant le traitement du transfert'];
             }
 
+            // Transaction de l'émetteur
             $senderTransaction = [
                 'client_id' => $sender['id'],
                 'type_operation_id' => $typeOperationId,
@@ -410,6 +390,7 @@ class ClientController extends BaseController
                 return ['success' => false, 'message' => 'Impossible de mettre à jour le solde du client'];
             }
 
+            // Transaction du destinataire
             $recipientBalance = $dest['solde'] + $recipientAmount;
             $recipientTransaction = [
                 'client_id' => $dest['id'],

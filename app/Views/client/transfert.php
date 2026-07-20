@@ -3,54 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $title ?? 'Transfert - Mobile Money' ?></title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title><?= $title ?? 'Transfert' ?></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <?php include_once 'navbar.php'; ?>
+    <?= view('client/navbar') ?>
 
-    <div class="container mt-5">
+    <div class="container mt-4">
         <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="card shadow">
-                    <div class="card-body p-4">
-                        <h4 class="text-center mb-4">
-                            <i class="fas fa-exchange-alt text-primary"></i> Transfert
-                        </h4>
-                        <p class="text-muted text-center">Transférez facilement vers un autre numéro valide.</p>
-
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white border-0">
+                        <h4 class="mb-0"><i class="fas fa-exchange-alt text-info"></i> Transfert</h4>
+                        <small class="text-muted">Transférez facilement vers un ou plusieurs numéros du même opérateur.</small>
+                    </div>
+                    <div class="card-body">
+                        <?php if (!empty($prefixes)): ?>
+                            <div class="alert alert-info">
+                                Numéros autorisés : <strong><?= esc(implode(', ', $prefixes)) ?></strong>. Envoi possible uniquement vers le même opérateur.
+                            </div>
+                        <?php endif; ?>
                         <div id="result"></div>
-
                         <form id="transfertForm">
-                            <div class="mb-3">
-                                <label class="form-label">Numéro du destinataire</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
-                                    <input type="tel" name="destinataire" class="form-control" 
-                                           placeholder="Ex: 0331234567" required>
-                                </div>
-                                <small class="text-muted">Entrez le numéro de téléphone du bénéficiaire</small>
+                            <div class="mb-4">
+                                <label class="form-label">Numéros des destinataires</label>
+                                <textarea name="destinataires" class="form-control form-control-lg" rows="4" placeholder="Ex : 0331234567, 0339876543" required></textarea>
+                                <div class="form-text">Séparez plusieurs numéros par des virgules, des points-virgules ou des retours à la ligne. Le montant sera divisé automatiquement entre tous les destinataires.</div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Montant à transférer (Ar)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-money-bill-wave"></i></span>
-                                    <input type="number" name="montant" class="form-control" 
-                                           placeholder="Ex: 10000" min="100" step="100" required>
-                                </div>
-                                <small class="text-muted">Des frais seront appliqués selon le montant</small>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="inclureFrais" name="inclure_frais" checked>
+                                <label class="form-check-label" for="inclureFrais">Je prends en charge les frais de transfert. Sinon, les frais seront déduits du montant envoyé.</label>
                             </div>
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="fas fa-paper-plane"></i> Effectuer le transfert
+                            <div class="mb-4">
+                                <label class="form-label">Montant total à transférer (Ar)</label>
+                                <input type="number" name="montant" id="transfertMontant" class="form-control form-control-lg" placeholder="Ex : 10000" min="100" required>
+                                <div class="form-text">Les frais sont calculés automatiquement selon le barème. Le montant indiqué sera partagé entre tous les destinataires.</div>
+                            </div>
+                            <div class="mb-4">
+                                <div id="preview" class="alert alert-secondary d-none"></div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="fas fa-check me-2"></i> Effectuer le transfert
                             </button>
                         </form>
-
-                        <div class="text-center mt-3">
-                            <a href="/client/dashboard" class="text-decoration-none">
-                                <i class="fas fa-arrow-left"></i> Retour au dashboard
-                            </a>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -107,17 +103,8 @@
 
         transfertForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
             const formData = new FormData(this);
-            
-            // Afficher un message de chargement
-            document.getElementById('result').innerHTML = `
-                <div class="alert alert-info">
-                    <i class="fas fa-spinner fa-spin"></i> Traitement en cours...
-                </div>
-            `;
-            
-            fetch('/client/doTransfert', {
+            fetch('/index.php/client/doTransfert', {
                 method: 'POST',
                 body: formData
             })
@@ -128,8 +115,9 @@
                     resultDiv.innerHTML = `
                         <div class="alert alert-success">
                             <i class="fas fa-check-circle"></i> ${data.message}<br>
-                            <strong>Frais :</strong> ${data.frais}<br>
-                            <strong>Nouveau solde :</strong> ${data.nouveau_solde}
+                            <strong>Frais totaux : ${data.frais}</strong><br>
+                            <strong>Total débité : ${data.total_debite}</strong><br>
+                            <strong>Nouveau solde : ${data.nouveau_solde}</strong>
                         </div>
                     `;
                     transfertForm.reset();
@@ -146,13 +134,13 @@
                 console.error('Erreur:', error);
                 document.getElementById('result').innerHTML = `
                     <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-circle"></i> Une erreur est survenue. Veuillez réessayer.
+                        Une erreur est survenue. Veuillez réessayer.
                     </div>
                 `;
             });
         });
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

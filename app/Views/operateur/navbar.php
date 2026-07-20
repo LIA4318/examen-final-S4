@@ -53,7 +53,7 @@
             <ul class="navbar-nav">
                 <li class="nav-item">
                     <a class="btn btn-outline-success btn-sm" href="/client/dashboard">
-                        <i class="fas fa-user"></i> Côté Client
+                        <i class="fas fa-user"></i> Espace Client
                     </a>
                 </li>
             </ul>

@@ -38,7 +38,7 @@
             <ul class="navbar-nav">
                 <li class="nav-item">
                     <a class="btn btn-outline-light btn-sm" href="/operateur/dashboard">
-                        <i class="fas fa-cogs"></i> Côté Opérateur
+                        <i class="fas fa-cogs"></i> Espace  Opérateur
                     </a>
                 </li>
                 <li class="nav-item ms-2">

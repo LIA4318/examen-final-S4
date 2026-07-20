@@ -4,6 +4,8 @@
 -Etudiant 1: D'ARVISENET Anjara Yrielle(ETU004164)
 -Etudiant 2: RAKOTONDRINA Liantsoa(ETU004318)
 
+## VERSION 1
+
 ## Mise en place de l'envionnement(OK)
 ### [Yrielle]
 - Mise en place de l'environnement de développement (PHP, Composer, CodeIgniter 4)
@@ -124,8 +126,9 @@
 - dashboard.php - Solde + formulaires dépôt/retrait/transfert en AJAX + accès historique
 - historique.php - Tableau complet des transactions
 
-## VERSION 2: COTE OPERATEUR (OK)
+## VERSION 2: 
 
+### COTE OPERATEUR (OK)
 ## [LIANTSOA]
 1. Configuration des préfixes pour les autres opérateurs (OK)
 - Table operateurs créée avec les colonnes : id, nom, code, prefixe, commission_pourcentage, actif
@@ -158,3 +161,25 @@
       - Nombre de transactions
       - Montant total
       - Commission totale
+
+### COTE CLIENT
+
+## Transfert avec frais inclus (OK)
+### [Yrielle]
+- Ajout d'une option "Je prends en charge les frais de transfert" dans le formulaire de transfert (`transfert.php`)
+- Si activée : l'expéditeur paie les frais en plus du montant transféré, le destinataire reçoit le montant plein
+- Si désactivée : les frais sont déduits du montant envoyé au destinataire
+- Colonne `frais_inclus` ajoutée dans la table `transactions` (`base.sql`)
+- Restriction : disponible uniquement pour les transferts vers le même opérateur (pas de frais de retrait géré pour les autres opérateurs)
+- Logique de calcul des frais vérifiée dans `ClientController::doTransfert()`
+
+## Envoi multiple vers plusieurs numéros (OK)
+### [Yrielle]
+- Formulaire de transfert modifié pour accepter plusieurs numéros destinataires (séparés par virgules, points-virgules ou retours à la ligne) dans `transfert.php`
+- Détection et déduplication automatique des numéros saisis (JS)
+- Division automatique du montant total entre tous les destinataires (avec gestion du reste ajouté au dernier destinataire)
+- Aperçu en temps réel du montant par destinataire avant validation (calcul JS)
+- Restriction : l'envoi multiple n'est possible qu'entre numéros du même opérateur
+- Table `envois_multiples` créée pour tracer l'envoi global (client, montant total, nombre de destinataires, statut)
+- Table `envois_multiples_details` créée pour tracer chaque destinataire individuellement (numéro, montant, statut, date d'exécution)
+- Logique backend vérifiée dans `ClientController::doTransfert()` : parsing des numéros, vérification du même opérateur, division du montant, création des entrées `envois_multiples` / `envois_multiples_details`
