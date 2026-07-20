@@ -19,26 +19,30 @@ class FraisBaremeModel extends Model
         'frais'
     ];
 
-    // Validation
+    // Validation avec règles correctes
     protected $validationRules = [
-        'type_operation_id' => 'required|integer|is_not_unique[types_operations.id]',
-        'montant_min'       => 'required|decimal|greater_than_equal[0]',
-        'montant_max'       => 'required|decimal|greater_than[montant_min]',
-        'frais'             => 'required|decimal|greater_than_equal[0]'
+        'type_operation_id' => 'required|integer',
+        'montant_min'       => 'required|numeric',
+        'montant_max'       => 'required|numeric',
+        'frais'             => 'required|numeric'
     ];
 
     protected $validationMessages = [
         'type_operation_id' => [
             'required' => 'Le type d\'opération est obligatoire',
-            'is_not_unique' => 'Le type d\'opération spécifié n\'existe pas'
+            'integer' => 'Le type d\'opération doit être un nombre'
         ],
         'montant_min' => [
             'required' => 'Le montant minimum est obligatoire',
-            'greater_than_equal' => 'Le montant minimum doit être supérieur ou égal à 0'
+            'numeric' => 'Le montant minimum doit être un nombre'
         ],
         'montant_max' => [
             'required' => 'Le montant maximum est obligatoire',
-            'greater_than' => 'Le montant maximum doit être supérieur au montant minimum'
+            'numeric' => 'Le montant maximum doit être un nombre'
+        ],
+        'frais' => [
+            'required' => 'Le frais est obligatoire',
+            'numeric' => 'Le frais doit être un nombre'
         ]
     ];
 

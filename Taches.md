@@ -65,3 +65,64 @@
 - Test des opérations (dépôt, retrait, transfert)
 - Test des clients
 
+
+
+
+## Contrôleurs (app/Controllers/) (OK)
+### [LIANTSOA]
+# OperateurController.php (OK)
+
+- Dashboard avec statistiques
+- Gestion des préfixes
+- CRUD types d'opérations
+- CRUD barèmes de frais
+- Liste des clients
+- Statistiques globales
+- Correction des noms de colonnes
+
+### [LIANTSOA]
+# ClientController.php (OK)
+
+- Login automatique par téléphone
+- Dashboard avec solde
+- Dépôt
+- Retrait
+- Transfert
+- Historique
+- Correction des champs pour la table transactions
+- Utilisation de client_destinataire_id au lieu de destinataire_id
+
+### [LIANTSOA]
+# ApiOperateur.php (OK)
+
+- API pour statistiques
+- API pour calcul des frais
+- API pour récupération client
+
+## Vues (app/Views/) (OK)
+
+### [LIANTSOA]
+# Opérateur (app/Views/operateur/) (OK)
+
+- navbar.php - Barre de navigation commune
+- dashboard.php - Dashboard avec statistiques
+- prefixes.php - Gestion des préfixes
+- types_operations.php - Liste des types
+- type_create.php - Création de type
+- type_edit.php - Modification de type NOUVEAU
+- baremes.php - Liste des barèmes
+- bareme_create.php - Création de barème
+- bareme_edit.php - Modification de barème NOUVEAU
+- clients.php - Liste des clients
+- client_detail.php - Détail client NOUVEAU
+- statistiques.php - Statistiques globales
+
+### [LIANTSOA]
+# Client (app/Views/client/) (OK)
+
+- login.php - Connexion automatique
+- dashboard.php - Dashboard client
+- depot.php - Formulaire de dépôt
+- retrait.php - Formulaire de retrait NOUVEAU
+- transfert.php - Formulaire de transfert NOUVEAU
+- historique.php - Historique des opérations NOUVEAU

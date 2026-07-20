@@ -14,46 +14,32 @@ class TypeOperationModel extends Model
     protected $protectFields    = true;
     protected $allowedFields = ['libelle'];
 
-    // Validation
     protected $validationRules = [
-        'libelle' => 'required|max_length[100]|is_unique[types_operations.libelle]'
+        'libelle' => 'required|max_length[100]'
     ];
 
     protected $validationMessages = [
         'libelle' => [
             'required' => 'Le libellé du type d\'opération est obligatoire',
-            'is_unique' => 'Ce libellé existe déjà'
+            'max_length' => 'Le libellé ne doit pas dépasser 100 caractères'
         ]
     ];
 
-    /**
-     * Récupérer tous les types actifs
-     * (Adapté à votre structure)
-     */
     public function getActiveTypes()
     {
         return $this->findAll();
     }
 
-    /**
-     * Récupérer un type par son libellé
-     */
     public function findByLibelle($libelle)
     {
-        return $this->where('libelle', $libelle)->first();
+        return $this->where('libelle', strtolower($libelle))->first();
     }
 
-    /**
-     * Vérifier si un type existe
-     */
     public function typeExists($libelle)
     {
-        return $this->where('libelle', $libelle)->countAllResults() > 0;
+        return $this->where('libelle', strtolower($libelle))->countAllResults() > 0;
     }
     
-    /**
-     * Pour la compatibilité avec le code existant
-     */
     public function findByCode($code)
     {
         return $this->findByLibelle($code);
