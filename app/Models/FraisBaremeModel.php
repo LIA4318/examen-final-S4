@@ -22,9 +22,9 @@ class FraisBaremeModel extends Model
     // Validation
     protected $validationRules = [
         'type_operation_id' => 'required|integer|is_not_unique[types_operations.id]',
-        'montant_min'       => 'required|decimal|greater_than_equal[0]',
+        'montant_min'       => 'required|decimal|greater_than_equal_to[0]',
         'montant_max'       => 'required|decimal|greater_than[montant_min]',
-        'frais'             => 'required|decimal|greater_than_equal[0]'
+        'frais'             => 'required|decimal|greater_than_equal_to[0]'
     ];
 
     protected $validationMessages = [
@@ -34,7 +34,7 @@ class FraisBaremeModel extends Model
         ],
         'montant_min' => [
             'required' => 'Le montant minimum est obligatoire',
-            'greater_than_equal' => 'Le montant minimum doit être supérieur ou égal à 0'
+            'greater_than_equal_to' => 'Le montant minimum doit être supérieur ou égal à 0'
         ],
         'montant_max' => [
             'required' => 'Le montant maximum est obligatoire',
@@ -94,7 +94,7 @@ class FraisBaremeModel extends Model
     {
         $db = \Config\Database::connect();
         return $db->query("
-            SELECT 
+            SELECT
                 t.libelle as type_operation,
                 COUNT(f.id) as nb_baremes,
                 MIN(f.montant_min) as min_montant,

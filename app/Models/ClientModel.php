@@ -20,7 +20,7 @@ class ClientModel extends Model
 
     protected $validationRules = [
         'numero_telephone' => 'required|min_length[10]|max_length[15]|is_unique[clients.numero_telephone]',
-        'solde' => 'permit_empty|decimal|greater_than_equal[0]'
+        'solde' => 'permit_empty|decimal|greater_than_equal_to[0]'
     ];
 
     protected $validationMessages = [
@@ -31,7 +31,7 @@ class ClientModel extends Model
         ],
         'solde' => [
             'decimal' => 'Le solde doit être un nombre valide',
-            'greater_than_equal' => 'Le solde ne peut pas être négatif'
+            'greater_than_equal_to' => 'Le solde ne peut pas être négatif'
         ]
     ];
 
@@ -53,8 +53,8 @@ class ClientModel extends Model
             return false;
         }
 
-        $nouveauSolde = ($operation === 'add') 
-            ? $client['solde'] + $montant 
+        $nouveauSolde = ($operation === 'add')
+            ? $client['solde'] + $montant
             : $client['solde'] - $montant;
 
         if ($nouveauSolde < 0) {

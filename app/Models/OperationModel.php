@@ -6,7 +6,7 @@ use CodeIgniter\Model;
 
 class OperationModel extends Model
 {
-    protected $table            = 'operations';
+    protected $table            = 'transactions';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
@@ -17,143 +17,120 @@ class OperationModel extends Model
         'type_operation_id',
         'montant',
         'frais',
-        'solde_avant',
-        'solde_apres',
-        'reference',
-        'destinataire_id',
-        'description',
-        'statut',
-        'date_creation'
+        'client_destinataire_id'
     ];
 
-    // Dates
+    // Pas de timestamps automatiques CodeIgniter : la colonne date_transaction
+    // a un DEFAULT CURRENT_TIMESTAMP géré directement par SQLite.
     protected $useTimestamps = false;
-    protected $dateFormat    = 'datetime';
-    protected $createdField  = 'date_creation';
 
     // Validation
     protected $validationRules = [
-        'client_id' => 'required|integer|is_not_unique[clients.id]',
-        'type_operation_id' => 'required|integer|is_not_unique[types_operations.id]',
-        'montant' => 'required|decimal|greater_than[0]',
-        'frais' => 'permit_empty|decimal|greater_than_equal[0]',
-        'statut' => 'permit_empty|in_list[SUCCES,ECHEC,EN_ATTENTE]'
+        'client_id'          => 'required|integer|is_not_unique[clients.id]',
+        'type_operation_id'  => 'required|integer|is_not_unique[types_operations.id]',
+        'montant'            => 'required|decimal|greater_than[0]',
+        'frais'              => 'permit_empty|decimal|greater_than_equal_to[0]'
     ];
 
     protected $validationMessages = [
         'client_id' => [
-            'required' => 'Le client est obligatoire',
+            'required'    => 'Le client est obligatoire',
             'is_not_unique' => 'Le client spécifié n\'existe pas'
         ],
         'montant' => [
-            'required' => 'Le montant est obligatoire',
+            'required'     => 'Le montant est obligatoire',
             'greater_than' => 'Le montant doit être supérieur à 0'
-        ],
-        'statut' => [
-            'in_list' => 'Le statut doit être SUCCES, ECHEC ou EN_ATTENTE'
         ]
     ];
 
     /**
-     * Créer une nouvelle opération
+     * Créer une nouvelle opération (dépôt, retrait ou transfert)
      */
     public function createOperation($data)
     {
-        // Générer une référence unique
-        $data['reference'] = 'REF-' . date('Ymd') . '-' . uniqid();
-        
-        // Récupérer le solde du client
         $clientModel = new ClientModel();
         $client = $clientModel->find($data['client_id']);
-        
+
         if (!$client) {
             return ['success' => false, 'message' => 'Client non trouvé'];
         }
 
-        $data['solde_avant'] = $client['solde'];
-        
-        // Calculer le nouveau solde selon le type d'opération
         $typeOpModel = new TypeOperationModel();
         $typeOp = $typeOpModel->find($data['type_operation_id']);
-        
+
         if (!$typeOp) {
             return ['success' => false, 'message' => 'Type d\'opération invalide'];
         }
 
-        $nouveauSolde = $client['solde'];
         $frais = $data['frais'] ?? 0;
         $totalMontant = $data['montant'] + $frais;
+        $nouveauSolde = $client['solde'];
 
-        switch ($typeOp['code']) {
-            case 'DEPOT':
+        $typeKey = strtolower($typeOp['libelle']);
+
+        switch ($typeKey) {
+            case 'depot':
                 $nouveauSolde += $data['montant'];
                 break;
-            case 'RETRAIT':
+
+            case 'retrait':
                 if ($client['solde'] < $totalMontant) {
                     return ['success' => false, 'message' => 'Solde insuffisant'];
                 }
                 $nouveauSolde -= $totalMontant;
                 break;
-            case 'TRANSFERT':
+
+            case 'transfert':
                 if ($client['solde'] < $totalMontant) {
                     return ['success' => false, 'message' => 'Solde insuffisant'];
                 }
-                if (!isset($data['destinataire_id']) || !$data['destinataire_id']) {
+                if (empty($data['client_destinataire_id'])) {
                     return ['success' => false, 'message' => 'Destinataire requis pour un transfert'];
                 }
-                // Vérifier que le destinataire existe
-                $destinataire = $clientModel->find($data['destinataire_id']);
+                $destinataire = $clientModel->find($data['client_destinataire_id']);
                 if (!$destinataire) {
                     return ['success' => false, 'message' => 'Destinataire non trouvé'];
                 }
                 $nouveauSolde -= $totalMontant;
                 break;
+
             default:
                 return ['success' => false, 'message' => 'Type d\'opération non pris en charge'];
         }
 
-        $data['solde_apres'] = $nouveauSolde;
-        $data['statut'] = 'SUCCES';
-        
-        // Démarrer la transaction
+        // Démarrer la transaction SQL
         $db = \Config\Database::connect();
         $db->transStart();
 
-        // Enregistrer l'opération
-        $operationId = $this->insert($data);
-        
+        $insertData = [
+            'client_id'         => $data['client_id'],
+            'type_operation_id' => $data['type_operation_id'],
+            'montant'           => $data['montant'],
+            'frais'             => $frais,
+        ];
+        if (!empty($data['client_destinataire_id'])) {
+            $insertData['client_destinataire_id'] = $data['client_destinataire_id'];
+        }
+
+        $operationId = $this->insert($insertData);
+
         if (!$operationId) {
             $db->transRollback();
             return ['success' => false, 'message' => 'Erreur lors de l\'enregistrement de l\'opération'];
         }
 
-        // Mettre à jour le solde du client
         $updated = $clientModel->update($data['client_id'], ['solde' => $nouveauSolde]);
-        
+
         if (!$updated) {
             $db->transRollback();
             return ['success' => false, 'message' => 'Erreur lors de la mise à jour du solde'];
         }
 
-        // Pour les transferts, mettre à jour le solde du destinataire
-        if ($typeOp['code'] === 'TRANSFERT' && isset($data['destinataire_id'])) {
-            $destinataire = $clientModel->find($data['destinataire_id']);
+        // Pour un transfert : créditer le destinataire (sans frais pour lui)
+        if ($typeKey === 'transfert') {
+            $destinataire = $clientModel->find($data['client_destinataire_id']);
             $nouveauSoldeDest = $destinataire['solde'] + $data['montant'];
-            
-            // Enregistrer l'opération de réception
-            $this->insert([
-                'client_id' => $data['destinataire_id'],
-                'type_operation_id' => $data['type_operation_id'],
-                'montant' => $data['montant'],
-                'frais' => 0,
-                'solde_avant' => $destinataire['solde'],
-                'solde_apres' => $nouveauSoldeDest,
-                'reference' => 'REC-' . date('Ymd') . '-' . uniqid(),
-                'description' => 'Réception de transfert de ' . $client['numero_telephone'],
-                'statut' => 'SUCCES'
-            ]);
-            
-            $clientModel->update($data['destinataire_id'], ['solde' => $nouveauSoldeDest]);
+            $clientModel->update($data['client_destinataire_id'], ['solde' => $nouveauSoldeDest]);
         }
 
         $db->transComplete();
@@ -163,22 +140,30 @@ class OperationModel extends Model
         }
 
         return [
-            'success' => true,
-            'message' => 'Opération réussie',
-            'operation_id' => $operationId,
-            'nouveau_solde' => $nouveauSolde,
-            'frais_appliques' => $frais
+            'success'          => true,
+            'message'          => 'Opération réussie',
+            'operation_id'     => $operationId,
+            'nouveau_solde'    => $nouveauSolde,
+            'frais_appliques'  => $frais
         ];
     }
 
     /**
-     * Récupérer l'historique d'un client
+     * Récupérer l'historique d'un client (avec le libellé du type d'opération
+     * et le numéro du destinataire pour les transferts)
      */
     public function getClientHistory($clientId, $limit = 50, $offset = 0)
     {
-        return $this->where('client_id', $clientId)
-                    ->orderBy('date_creation', 'DESC')
-                    ->findAll($limit, $offset);
+        $db = \Config\Database::connect();
+        return $db->table('transactions tr')
+                   ->select('tr.id, tr.montant, tr.frais, tr.date_transaction, t.libelle as type_libelle, dest.numero_telephone as destinataire_numero')
+                   ->join('types_operations t', 't.id = tr.type_operation_id')
+                   ->join('clients dest', 'dest.id = tr.client_destinataire_id', 'left')
+                   ->where('tr.client_id', $clientId)
+                   ->orderBy('tr.date_transaction', 'DESC')
+                   ->limit($limit, $offset)
+                   ->get()
+                   ->getResultArray();
     }
 
     /**
@@ -188,18 +173,17 @@ class OperationModel extends Model
     {
         $db = \Config\Database::connect();
         return $db->query("
-            SELECT 
-                t.nom as type_operation,
-                COUNT(o.id) as nb_operations,
-                SUM(o.montant) as total_montant,
-                SUM(o.frais) as total_frais,
-                AVG(o.montant) as montant_moyen,
-                MIN(o.montant) as min_montant,
-                MAX(o.montant) as max_montant
-            FROM operations o
-            JOIN types_operations t ON t.id = o.type_operation_id
-            WHERE o.statut = 'SUCCES'
-            GROUP BY t.nom
+            SELECT
+                t.libelle as type_operation,
+                COUNT(tr.id) as nb_operations,
+                SUM(tr.montant) as total_montant,
+                SUM(tr.frais) as total_frais,
+                AVG(tr.montant) as montant_moyen,
+                MIN(tr.montant) as min_montant,
+                MAX(tr.montant) as max_montant
+            FROM transactions tr
+            JOIN types_operations t ON t.id = tr.type_operation_id
+            GROUP BY t.libelle
         ")->getResultArray();
     }
 
@@ -210,15 +194,15 @@ class OperationModel extends Model
     {
         $db = \Config\Database::connect();
         return $db->query("
-            SELECT 
-                t.nom as type_operation,
-                COUNT(o.id) as nb_operations,
-                SUM(o.frais) as total_gains,
-                AVG(o.frais) as gain_moyen
-            FROM operations o
-            JOIN types_operations t ON t.id = o.type_operation_id
-            WHERE o.statut = 'SUCCES' AND o.frais > 0
-            GROUP BY t.nom
+            SELECT
+                t.libelle as type_operation,
+                COUNT(tr.id) as nb_operations,
+                SUM(tr.frais) as total_gains,
+                AVG(tr.frais) as gain_moyen
+            FROM transactions tr
+            JOIN types_operations t ON t.id = tr.type_operation_id
+            WHERE tr.frais > 0
+            GROUP BY t.libelle
             ORDER BY total_gains DESC
         ")->getResultArray();
     }

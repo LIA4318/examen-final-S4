@@ -12,10 +12,10 @@
             <?php if (session()->getFlashdata('error')): ?>
                 <div class="alert alert-danger"><?= session()->getFlashdata('error') ?></div>
             <?php endif; ?>
-            <form action="/client/login" method="post">
+            <form action="/client/doLogin" method="post">
                 <div class="mb-3">
                     <label>Numéro de téléphone</label>
-                    <input type="text" name="numero_telephone" class="form-control" 
+                    <input type="text" name="telephone" class="form-control" 
                            placeholder="Ex: 0331234567" required>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Se connecter</button>
