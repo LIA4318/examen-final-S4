@@ -58,7 +58,54 @@
     </div>
 
     <script>
-        document.getElementById('transfertForm').addEventListener('submit', function(e) {
+        const preview = document.getElementById('preview');
+        const transfertForm = document.getElementById('transfertForm');
+        const destinatairesField = transfertForm.querySelector('[name="destinataires"]');
+        const montantField = document.getElementById('transfertMontant');
+
+        const updatePreview = () => {
+            const raw = destinatairesField.value.trim();
+            const montant = parseFloat(montantField.value);
+            if (!raw || !montant || montant <= 0) {
+                preview.classList.add('d-none');
+                preview.innerHTML = '';
+                return;
+            }
+
+            const parts = raw
+                .replace(/\r/g, '\n')
+                .replace(/;/g, ',')
+                .split(/[\s,]+/)
+                .filter(Boolean)
+                .map(item => item.replace(/[^0-9]/g, ''))
+                .filter(Boolean);
+
+            const unique = [...new Set(parts)];
+            if (unique.length === 0) {
+                preview.classList.add('d-none');
+                preview.innerHTML = '';
+                return;
+            }
+
+            const count = unique.length;
+            const share = Math.floor((montant * 100) / count) / 100;
+            const remainder = (montant - share * count).toFixed(2);
+            const shareText = count > 1
+                ? `${share.toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} Ar par destinataire, avec un reste de ${remainder} Ar ajouté au dernier destinataire.`
+                : `${montant.toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} Ar pour le destinataire.`;
+
+            preview.classList.remove('d-none');
+            preview.innerHTML = `
+                <strong>${count}</strong> destinataire(s) détecté(s).<br>
+                Montant estimé par destinataire : ${shareText}
+                <br><small class="text-muted">Le montant total sera divisé entre tous les destinataires valides.</small>
+            `;
+        };
+
+        destinatairesField.addEventListener('input', updatePreview);
+        montantField.addEventListener('input', updatePreview);
+
+        transfertForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
             const formData = new FormData(this);
@@ -85,7 +132,8 @@
                             <strong>Nouveau solde :</strong> ${data.nouveau_solde}
                         </div>
                     `;
-                    document.getElementById('transfertForm').reset();
+                    transfertForm.reset();
+                    preview.classList.add('d-none');
                 } else {
                     resultDiv.innerHTML = `
                         <div class="alert alert-danger">

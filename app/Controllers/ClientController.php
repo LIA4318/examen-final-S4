@@ -209,20 +209,22 @@ class ClientController extends BaseController
         }
 
         $montant = $this->request->getPost('montant');
-        $destinataire = $this->request->getPost('destinataire');
+        $destinatairesRaw = $this->request->getPost('destinataires');
+        $inclureFrais = $this->request->getPost('inclure_frais') ? true : false;
 
         if (empty($montant) || $montant <= 0) {
             return $this->response->setJSON(['success' => false, 'message' => 'Montant invalide']);
         }
 
-        if (empty($destinataire)) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Numéro du destinataire requis']);
+        if (empty($destinatairesRaw)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Au moins un numéro destinataire est requis']);
         }
 
-        $destinataire = preg_replace('/[^0-9]/', '', $destinataire);
+        $destinataires = $this->parseDestinataires($destinatairesRaw);
+        $destinataires = array_unique($destinataires);
 
-        if (empty($destinataire) || strlen($destinataire) < 8) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Numéro du destinataire invalide']);
+        if (empty($destinataires)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Aucun numéro destinataire valide trouvé']);
         }
 
         // Vérifier si le destinataire est un autre opérateur
@@ -235,13 +237,33 @@ class ClientController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Préfixe du destinataire invalide']);
         }
 
-        $destinataireClient = $this->clientModel->findByTelephone($destinataire);
-        if (!$destinataireClient) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Destinataire non trouvé']);
+        $clientTelephone = $this->session->get('client_telephone');
+        $clientId = $this->session->get('client_id');
+
+        if (in_array($clientTelephone, $destinataires, true)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Vous ne pouvez pas inclure votre propre numéro parmi les destinataires']);
         }
 
-        if ($destinataire == $this->session->get('client_telephone')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Vous ne pouvez pas vous transférer à vous-même']);
+        $destinataireClients = [];
+        foreach ($destinataires as $destinataire) {
+            if (empty($destinataire) || strlen($destinataire) < 8) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Numéro destinataire invalide : ' . esc($destinataire)]);
+            }
+
+            if (!$this->configurationModel->isValidPrefix($destinataire)) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Préfixe du destinataire invalide : ' . esc($destinataire)]);
+            }
+
+            $destClient = $this->clientModel->findByTelephone($destinataire);
+            if (!$destClient) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Destinataire non trouvé : ' . esc($destinataire)]);
+            }
+
+            if ($destClient['id'] === $clientId) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Vous ne pouvez pas vous transférer à vous-même']);
+            }
+
+            $destinataireClients[] = $destClient;
         }
 
         $typeTransfert = $this->typeOperationModel->findByLibelle('transfert');
@@ -283,7 +305,139 @@ class ClientController extends BaseController
             ]);
         }
 
-        return $this->response->setJSON(['success' => false, 'message' => $result['message']]);
+        $sender = $this->clientModel->find($clientId);
+        $totalDebit = array_sum($shares);
+        if ($inclureFrais) {
+            $totalDebit += $totalFrais;
+        }
+
+        if ($sender['solde'] < $totalDebit) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Solde insuffisant pour effectuer ce transfert. Total débité : ' . number_format($totalDebit, 2, ',', ' ') . ' Ar']);
+        }
+
+        $result = $this->processMultipleTransfers($sender, $destinataireClients, $shares, $fraisParDestinataire, $typeTransfert['id'], $inclureFrais);
+
+        if (!$result['success']) {
+            return $this->response->setJSON(['success' => false, 'message' => $result['message']]);
+        }
+
+        $this->session->set('client_solde', $result['nouveau_solde']);
+
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Transfert effectué avec succès vers ' . count($destinataires) . ' destinataire(s)',
+            'nouveau_solde' => number_format($result['nouveau_solde'], 2, ',', ' ') . ' Ar',
+            'frais' => number_format($totalFrais, 2, ',', ' ') . ' Ar',
+            'total_debite' => number_format($totalDebit, 2, ',', ' ') . ' Ar',
+            'inclure_frais' => $inclureFrais,
+            'frais_pris_en_charge' => $inclureFrais,
+        ]);
+    }
+
+    private function parseDestinataires(string $raw): array
+    {
+        $raw = str_replace(["\r", ';'], ["\n", ','], $raw);
+        $parts = preg_split('/[\s,]+/', $raw, -1, PREG_SPLIT_NO_EMPTY);
+
+        $destinataires = [];
+        foreach ($parts as $part) {
+            $telefono = preg_replace('/[^0-9]/', '', $part);
+            if ($telefono !== '') {
+                $destinataires[] = $telefono;
+            }
+        }
+
+        return $destinataires;
+    }
+
+    private function splitAmountByRecipients(float $montant, int $count): array
+    {
+        $cents = (int) round($montant * 100);
+        $base = intdiv($cents, $count);
+        $remainder = $cents % $count;
+
+        $shares = [];
+        for ($i = 0; $i < $count; $i++) {
+            $shareCents = $base + ($i < $remainder ? 1 : 0);
+            $shares[] = $shareCents / 100;
+        }
+
+        return $shares;
+    }
+
+    private function processMultipleTransfers(array $sender, array $destinataires, array $shares, array $frais, int $typeOperationId, bool $inclureFrais): array
+    {
+        $db = \Config\Database::connect();
+        $db->transStart();
+
+        $senderBalance = $sender['solde'];
+        $transactions = $db->table('transactions');
+        $clients = $db->table('clients');
+
+        foreach ($destinataires as $index => $dest) {
+            $amount = $shares[$index];
+            $fee = $frais[$index];
+            $senderTotal = $inclureFrais ? $amount + $fee : $amount;
+            $recipientAmount = $inclureFrais ? $amount : $amount - $fee;
+
+            if ($recipientAmount <= 0) {
+                $db->transRollback();
+                return ['success' => false, 'message' => 'Montant trop faible pour couvrir les frais sur le transfert'];
+            }
+
+            if ($senderBalance < $senderTotal) {
+                $db->transRollback();
+                return ['success' => false, 'message' => 'Solde insuffisant pendant le traitement du transfert'];
+            }
+
+            $senderTransaction = [
+                'client_id' => $sender['id'],
+                'type_operation_id' => $typeOperationId,
+                'montant' => $amount,
+                'frais' => $fee,
+                'client_destinataire_id' => $dest['id'],
+                'date_transaction' => date('Y-m-d H:i:s'),
+            ];
+
+            if (!$transactions->insert($senderTransaction)) {
+                $db->transRollback();
+                return ['success' => false, 'message' => 'Erreur lors de l\'enregistrement du transfert'];
+            }
+
+            $senderBalance -= $senderTotal;
+            if (!$clients->update(['solde' => $senderBalance], ['id' => $sender['id']])) {
+                $db->transRollback();
+                return ['success' => false, 'message' => 'Impossible de mettre à jour le solde du client'];
+            }
+
+            $recipientBalance = $dest['solde'] + $recipientAmount;
+            $recipientTransaction = [
+                'client_id' => $dest['id'],
+                'type_operation_id' => $typeOperationId,
+                'montant' => $recipientAmount,
+                'frais' => 0,
+                'client_destinataire_id' => null,
+                'date_transaction' => date('Y-m-d H:i:s'),
+            ];
+
+            if (!$transactions->insert($recipientTransaction)) {
+                $db->transRollback();
+                return ['success' => false, 'message' => 'Erreur lors de l\'enregistrement du transfert destinataire'];
+            }
+
+            if (!$clients->update(['solde' => $recipientBalance], ['id' => $dest['id']])) {
+                $db->transRollback();
+                return ['success' => false, 'message' => 'Impossible de mettre à jour le solde du destinataire'];
+            }
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return ['success' => false, 'message' => 'Erreur lors de la transaction globale'];
+        }
+
+        return ['success' => true, 'nouveau_solde' => $senderBalance];
     }
 
     public function historique()

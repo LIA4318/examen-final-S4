@@ -57,6 +57,9 @@ CREATE TABLE transactions (
 -- Préfixes
 INSERT INTO prefixes (prefixe) VALUES ('033');
 INSERT INTO prefixes (prefixe) VALUES ('037');
+INSERT INTO prefixes (prefixe) VALUES ('032');
+INSERT INTO prefixes (prefixe) VALUES ('034');
+INSERT INTO prefixes (prefixe) VALUES ('038');
 
 -- Types d'opération
 INSERT INTO types_operations (libelle) VALUES ('depot');
@@ -91,10 +94,14 @@ INSERT INTO baremes_frais (type_operation_id, montant_min, montant_max, frais) V
 
 -- Quelques clients de test
 INSERT INTO clients (numero_telephone, solde) VALUES
-('0331234567', 10000),
 ('0372345678', 5000),
-('0339876543', 0);
-
+('0323456789', 30000),
+('0371234567', 15000),
+('0343456789', 20000),
+('0341234567', 5000),
+('0381434567', 10000),
+('0331234567', 10000),
+('0334567890', 15000);
 
 
 -- ============================================
