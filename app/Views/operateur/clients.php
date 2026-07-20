@@ -8,7 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <?php include_once 'navbar.php'; ?>
+    <?= view('operateur/navbar') ?>
 
     <div class="container mt-4">
         <h1>Clients</h1>
@@ -35,7 +35,7 @@
                                     <td><?= number_format($client['solde'], 2, ',', ' ') ?> Ar</td>
                                     <td><?= $client['date_creation'] ?></td>
                                     <td>
-                                        <a href="/operateur/client/<?= $client['id'] ?>" class="btn btn-sm btn-info">
+                                        <a href="/index.php/operateur/client/<?= $client['id'] ?>" class="btn btn-sm btn-info">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                     </td>

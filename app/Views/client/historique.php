@@ -10,10 +10,10 @@
 <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="/client/dashboard">
+            <a class="navbar-brand" href="/index.php/client/dashboard">
                 <i class="fas fa-mobile-alt"></i> Mobile Money
             </a>
-            <a href="/client/dashboard" class="btn btn-outline-light">
+            <a href="/index.php/client/dashboard" class="btn btn-outline-light">
                 <i class="fas fa-arrow-left"></i> Retour
             </a>
         </div>

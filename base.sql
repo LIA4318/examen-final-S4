@@ -1,5 +1,5 @@
 -- =========================================
--- Suppression des tables existantes (pour pouvoir relancer le script)
+-- Suppression des tables existantes 
 -- =========================================
 DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS baremes_frais;

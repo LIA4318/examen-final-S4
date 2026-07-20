@@ -8,7 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <?php include_once 'navbar.php'; ?>
+    <?= view('operateur/navbar') ?>
 
     <div class="container mt-4">
         <div class="row">
@@ -32,7 +32,7 @@
                                 <strong>Date création :</strong> <?= $client['date_creation'] ?>
                             </li>
                         </ul>
-                        <a href="/operateur/clients" class="btn btn-secondary mt-3">
+                        <a href="/index.php/operateur/clients" class="btn btn-secondary mt-3">
                             <i class="fas fa-arrow-left"></i> Retour
                         </a>
                     </div>

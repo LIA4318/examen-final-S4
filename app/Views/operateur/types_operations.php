@@ -8,12 +8,12 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <?php include_once 'navbar.php'; ?>
+    <?= view('operateur/navbar') ?>
 
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h1>Types d'Opérations</h1>
-            <a href="/operateur/type/create" class="btn btn-success">
+            <a href="/index.php/operateur/type/create" class="btn btn-success">
                 <i class="fas fa-plus"></i> Nouveau type
             </a>
         </div>
@@ -42,10 +42,10 @@
                                     <td><?= $type['id'] ?></td>
                                     <td><?= ucfirst($type['libelle']) ?></td>
                                     <td>
-                                        <a href="/operateur/type/edit/<?= $type['id'] ?>" class="btn btn-sm btn-warning">
+                                        <a href="/index.php/operateur/type/edit/<?= $type['id'] ?>" class="btn btn-sm btn-warning">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <a href="/operateur/type/delete/<?= $type['id'] ?>" 
+                                        <a href="/index.php/operateur/type/delete/<?= $type['id'] ?>" 
                                            class="btn btn-sm btn-danger"
                                            onclick="return confirm('Supprimer ce type ?')">
                                             <i class="fas fa-trash"></i>

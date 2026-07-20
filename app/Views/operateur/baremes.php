@@ -8,12 +8,12 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <?php include_once 'navbar.php'; ?>
+    <?= view('operateur/navbar') ?>
 
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h1>Barèmes de Frais</h1>
-            <a href="/operateur/bareme/create" class="btn btn-success">
+            <a href="/index.php/operateur/bareme/create" class="btn btn-success">
                 <i class="fas fa-plus"></i> Nouveau barème
             </a>
         </div>
@@ -56,10 +56,10 @@
                                     <td><?= number_format($bareme['montant_max'], 0, ',', ' ') ?> Ar</td>
                                     <td><?= number_format($bareme['frais'], 0, ',', ' ') ?> Ar</td>
                                     <td>
-                                        <a href="/operateur/bareme/edit/<?= $bareme['id'] ?>" class="btn btn-sm btn-warning">
+                                        <a href="/index.php/operateur/bareme/edit/<?= $bareme['id'] ?>" class="btn btn-sm btn-warning">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <a href="/operateur/bareme/delete/<?= $bareme['id'] ?>" 
+                                        <a href="/index.php/operateur/bareme/delete/<?= $bareme['id'] ?>" 
                                            class="btn btn-sm btn-danger"
                                            onclick="return confirm('Supprimer ce barème ?')">
                                             <i class="fas fa-trash"></i>

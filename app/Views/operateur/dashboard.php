@@ -11,7 +11,7 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="/operateur">
+            <a class="navbar-brand" href="/index.php/operateur">
                 <i class="fas fa-cogs"></i> Opérateur Mobile Money
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -20,32 +20,32 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link active" href="/operateur/dashboard">
+                        <a class="nav-link active" href="/index.php/operateur/dashboard">
                             <i class="fas fa-home"></i> Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/operateur/prefixes">
+                        <a class="nav-link" href="/index.php/operateur/prefixes">
                             <i class="fas fa-tags"></i> Préfixes
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/operateur/types-operations">
+                        <a class="nav-link" href="/index.php/operateur/types-operations">
                             <i class="fas fa-list"></i> Types
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/operateur/baremes">
+                        <a class="nav-link" href="/index.php/operateur/baremes">
                             <i class="fas fa-calculator"></i> Barèmes
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/operateur/clients">
+                        <a class="nav-link" href="/index.php/operateur/clients">
                             <i class="fas fa-users"></i> Clients
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/operateur/statistiques">
+                        <a class="nav-link" href="/index.php/operateur/statistiques">
                             <i class="fas fa-chart-bar"></i> Stats
                         </a>
                     </li>

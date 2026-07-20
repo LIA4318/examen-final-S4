@@ -9,7 +9,7 @@
 </head>
 <body>
     <!-- Navbar (même que dashboard) -->
-    <?php include_once 'navbar.php'; ?>
+    <?= view('operateur/navbar') ?>
 
     <div class="container mt-4">
         <div class="row">
@@ -26,7 +26,7 @@
                             <div class="alert alert-danger"><?= session()->getFlashdata('error') ?></div>
                         <?php endif; ?>
 
-                        <form action="/operateur/update-prefixes" method="POST">
+                        <form action="/index.php/operateur/update-prefixes" method="POST">
                             <div class="mb-3">
                                 <label class="form-label">Préfixes valides</label>
                                 <div class="input-group">

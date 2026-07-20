@@ -196,9 +196,11 @@ class OperationModel extends Model
         return $db->query("
             SELECT 
                 t.*,
-                ty.libelle as type_libelle
+                ty.libelle AS type_libelle,
+                c.numero_telephone AS destinataire_numero
             FROM transactions t
             JOIN types_operations ty ON ty.id = t.type_operation_id
+            LEFT JOIN clients c ON c.id = t.client_destinataire_id
             WHERE t.client_id = ?
             ORDER BY t.date_transaction DESC
             LIMIT ?

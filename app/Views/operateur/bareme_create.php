@@ -8,7 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <?php include_once 'navbar.php'; ?>
+    <?= view('operateur/navbar') ?>
 
     <div class="container mt-4">
         <div class="row justify-content-center">
@@ -26,7 +26,7 @@
                             </div>
                         <?php endif; ?>
 
-                        <form action="/operateur/bareme/store" method="POST">
+                        <form action="/index.php/operateur/bareme/store" method="POST">
                             <div class="mb-3">
                                 <label class="form-label">Type d'opération</label>
                                 <select name="type_operation_id" class="form-control" required>
@@ -57,7 +57,7 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save"></i> Créer
                             </button>
-                            <a href="/operateur/baremes" class="btn btn-secondary">
+                            <a href="/index.php/operateur/baremes" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> Retour
                             </a>
                         </form>

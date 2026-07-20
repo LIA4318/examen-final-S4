@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $title ?? 'Transfert' ?></title>
+    <title><?= $title ?? 'Dépôt' ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -15,24 +15,19 @@
             <div class="col-lg-6">
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-white border-0">
-                        <h4 class="mb-0"><i class="fas fa-exchange-alt text-info"></i> Transfert</h4>
-                        <small class="text-muted">Transférez facilement vers un autre numéro valide.</small>
+                        <h4 class="mb-0"><i class="fas fa-arrow-down text-success"></i> Dépôt</h4>
+                        <small class="text-muted">Ajoutez de l'argent à votre solde en un clic.</small>
                     </div>
                     <div class="card-body">
                         <div id="result"></div>
-                        <form id="transfertForm">
+                        <form id="depotForm">
                             <div class="mb-4">
-                                <label class="form-label">Numéro du destinataire</label>
-                                <input type="tel" name="destinataire" class="form-control form-control-lg" placeholder="Ex : 0331234567" required>
-                                <div class="form-text">Le destinataire doit être un client existant de l'opérateur.</div>
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label">Montant à transférer (Ar)</label>
+                                <label class="form-label">Montant à déposer (Ar)</label>
                                 <input type="number" name="montant" class="form-control form-control-lg" placeholder="Ex : 10000" min="100" required>
-                                <div class="form-text">Les frais sont calculés automatiquement en fonction du barème.</div>
+                                <div class="form-text">Aucun frais n'est appliqué pour les dépôts.</div>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-lg w-100">
-                                <i class="fas fa-check me-2"></i> Effectuer le transfert
+                            <button type="submit" class="btn btn-success btn-lg w-100">
+                                <i class="fas fa-check me-2"></i> Effectuer le dépôt
                             </button>
                         </form>
                     </div>
@@ -42,10 +37,10 @@
     </div>
 
     <script>
-        document.getElementById('transfertForm').addEventListener('submit', function(e) {
+        document.getElementById('depotForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
-            fetch('/index.php/client/doTransfert', {
+            fetch('/index.php/client/doDepot', {
                 method: 'POST',
                 body: formData
             })
@@ -56,11 +51,10 @@
                     resultDiv.innerHTML = `
                         <div class="alert alert-success">
                             <i class="fas fa-check-circle"></i> ${data.message}<br>
-                            <strong>Frais : ${data.frais}</strong><br>
                             <strong>Nouveau solde : ${data.nouveau_solde}</strong>
                         </div>
                     `;
-                    document.getElementById('transfertForm').reset();
+                    document.getElementById('depotForm').reset();
                 } else {
                     resultDiv.innerHTML = `
                         <div class="alert alert-danger">
