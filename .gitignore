@@ -1,0 +1,33 @@
+# CodeIgniter 4
+/vendor/
+/builds/
+/writable/cache/*
+/writable/logs/*
+/writable/session/*
+/writable/uploads/*
+/writable/debugbar/*
+/writable/*.db
+!writable/cache/index.html
+!writable/logs/index.html
+!writable/session/index.html
+!writable/uploads/index.html
+!writable/debugbar/index.html
+
+# Base de données locale SQLite (générée à partir de base.sql, ne pas versionner)
+writable/database.db
+*.sqlite
+*.sqlite3
+
+# Environnement
+.env
+
+# Dépendances
+/node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# Système
+.DS_Store
+Thumbs.db

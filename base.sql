@@ -1,35 +1,52 @@
+-- =========================================
+-- Suppression des tables existantes (pour pouvoir relancer le script)
+-- =========================================
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS baremes_frais;
+DROP TABLE IF EXISTS types_operations;
+DROP TABLE IF EXISTS prefixes;
+DROP TABLE IF EXISTS clients;
+
+-- =========================================
+-- Création des tables
+-- =========================================
+
 CREATE TABLE clients (
-    id primary key,
-    numero_telephone VARCHAR(15) NOT NULL,
-    solde DECIMAL(10, 2) NOT NULL,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    numero_telephone VARCHAR(15) NOT NULL UNIQUE,
+    solde DECIMAL(10, 2) NOT NULL DEFAULT 0,
     date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-Create table prefixes(
-    id integer primary key autoincrement,
-    prefixe VARCHAR(10) NOT NULL
+
+CREATE TABLE prefixes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    prefixe VARCHAR(10) NOT NULL UNIQUE
 );
-create table types_operations (
-    id primary key,
+
+CREATE TABLE types_operations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     libelle VARCHAR(100) NOT NULL
 );
-create table baremes_frais (
-    id primary key,
-    type_operation_id VARCHAR(50) NOT NULL,
+
+CREATE TABLE baremes_frais (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type_operation_id INTEGER NOT NULL,
     montant_min DECIMAL(10, 2) NOT NULL,
-    montant_max DECIMAL(10, 2) NOT NULL, 
+    montant_max DECIMAL(10, 2) NOT NULL,
     frais DECIMAL(10, 2) NOT NULL,
-    FOREIGN KEY (type_operation_id) REFERENCES types_operations(type_operation_id)
+    FOREIGN KEY (type_operation_id) REFERENCES types_operations(id)
 );
-create table transactions(
-    id integer primary key AUTOINCREMENT,
-    client_id integer NOT NULL,
-    type_operation_id integer NOT NULL,
+
+CREATE TABLE transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER NOT NULL,
+    type_operation_id INTEGER NOT NULL,
     montant DECIMAL(15, 2) NOT NULL,
     frais DECIMAL(15, 2) NOT NULL,
     date_transaction TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     client_destinataire_id INTEGER,
     FOREIGN KEY (client_id) REFERENCES clients(id),
-    FOREIGN KEY (type_operation_id) REFERENCES types_operations(type_operation_id),
+    FOREIGN KEY (type_operation_id) REFERENCES types_operations(id),
     FOREIGN KEY (client_destinataire_id) REFERENCES clients(id)
 );
 
@@ -42,9 +59,9 @@ INSERT INTO prefixes (prefixe) VALUES ('033');
 INSERT INTO prefixes (prefixe) VALUES ('037');
 
 -- Types d'opération
-INSERT INTO types_operation (nom) VALUES ('depot');
-INSERT INTO types_operation (nom) VALUES ('retrait');
-INSERT INTO types_operation (nom) VALUES ('transfert');
+INSERT INTO types_operations (libelle) VALUES ('depot');
+INSERT INTO types_operations (libelle) VALUES ('retrait');
+INSERT INTO types_operations (libelle) VALUES ('transfert');
 
 -- Barèmes de frais pour RETRAIT (type_operation_id = 2)
 INSERT INTO baremes_frais (type_operation_id, montant_min, montant_max, frais) VALUES
@@ -71,8 +88,6 @@ INSERT INTO baremes_frais (type_operation_id, montant_min, montant_max, frais) V
 (3, 250001, 500000, 1500),
 (3, 500001, 1000000, 2500),
 (3, 1000001, 2000000, 3000);
-
--- (Le dépôt n'a généralement pas de frais, mais vous pouvez en ajouter si l'énoncé le demande)
 
 -- Quelques clients de test
 INSERT INTO clients (numero_telephone, solde) VALUES
