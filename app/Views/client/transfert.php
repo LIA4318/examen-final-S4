@@ -3,38 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $title ?? 'Transfert' ?></title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title><?= $title ?? 'Transfert - Mobile Money' ?></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <?= view('client/navbar') ?>
+    <?php include_once 'navbar.php'; ?>
 
-    <div class="container mt-4">
+    <div class="container mt-5">
         <div class="row justify-content-center">
-            <div class="col-lg-6">
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-white border-0">
-                        <h4 class="mb-0"><i class="fas fa-exchange-alt text-info"></i> Transfert</h4>
-                        <small class="text-muted">Transférez facilement vers un autre numéro valide.</small>
-                    </div>
-                    <div class="card-body">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-body p-4">
+                        <h4 class="text-center mb-4">
+                            <i class="fas fa-exchange-alt text-primary"></i> Transfert
+                        </h4>
+                        <p class="text-muted text-center">Transférez facilement vers un autre numéro valide.</p>
+
                         <div id="result"></div>
+
                         <form id="transfertForm">
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <label class="form-label">Numéro du destinataire</label>
-                                <input type="tel" name="destinataire" class="form-control form-control-lg" placeholder="Ex : 0331234567" required>
-                                <div class="form-text">Le destinataire doit être un client existant de l'opérateur.</div>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                    <input type="tel" name="destinataire" class="form-control" 
+                                           placeholder="Ex: 0331234567" required>
+                                </div>
+                                <small class="text-muted">Entrez le numéro de téléphone du bénéficiaire</small>
                             </div>
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <label class="form-label">Montant à transférer (Ar)</label>
-                                <input type="number" name="montant" class="form-control form-control-lg" placeholder="Ex : 10000" min="100" required>
-                                <div class="form-text">Les frais sont calculés automatiquement en fonction du barème.</div>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-money-bill-wave"></i></span>
+                                    <input type="number" name="montant" class="form-control" 
+                                           placeholder="Ex: 10000" min="100" step="100" required>
+                                </div>
+                                <small class="text-muted">Des frais seront appliqués selon le montant</small>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-lg w-100">
-                                <i class="fas fa-check me-2"></i> Effectuer le transfert
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-paper-plane"></i> Effectuer le transfert
                             </button>
                         </form>
+
+                        <div class="text-center mt-3">
+                            <a href="/client/dashboard" class="text-decoration-none">
+                                <i class="fas fa-arrow-left"></i> Retour au dashboard
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -44,8 +60,17 @@
     <script>
         document.getElementById('transfertForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            
             const formData = new FormData(this);
-            fetch('/index.php/client/doTransfert', {
+            
+            // Afficher un message de chargement
+            document.getElementById('result').innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-spinner fa-spin"></i> Traitement en cours...
+                </div>
+            `;
+            
+            fetch('/client/doTransfert', {
                 method: 'POST',
                 body: formData
             })
@@ -56,8 +81,8 @@
                     resultDiv.innerHTML = `
                         <div class="alert alert-success">
                             <i class="fas fa-check-circle"></i> ${data.message}<br>
-                            <strong>Frais : ${data.frais}</strong><br>
-                            <strong>Nouveau solde : ${data.nouveau_solde}</strong>
+                            <strong>Frais :</strong> ${data.frais}<br>
+                            <strong>Nouveau solde :</strong> ${data.nouveau_solde}
                         </div>
                     `;
                     document.getElementById('transfertForm').reset();
@@ -73,13 +98,13 @@
                 console.error('Erreur:', error);
                 document.getElementById('result').innerHTML = `
                     <div class="alert alert-danger">
-                        Une erreur est survenue. Veuillez réessayer.
+                        <i class="fas fa-exclamation-circle"></i> Une erreur est survenue. Veuillez réessayer.
                     </div>
                 `;
             });
         });
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

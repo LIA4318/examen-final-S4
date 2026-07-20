@@ -7,6 +7,7 @@ use App\Models\TypeOperationModel;
 use App\Models\FraisBaremeModel;
 use App\Models\OperationModel;
 use App\Models\ConfigurationModel;
+use App\Models\OperateurModel;
 
 class ClientController extends BaseController
 {
@@ -194,10 +195,11 @@ class ClientController extends BaseController
     public function transfert()
     {
         if (!$this->session->has('client_id')) {
-            return redirect()->to('/index.php/client/login');
+            return redirect()->to('/client/login');
         }
 
-        return view('client/transfert', ['title' => 'Transfert - Mobile Money']);
+        $data = ['title' => 'Transfert - Mobile Money'];
+        return view('client/transfert', $data);
     }
 
     public function doTransfert()
@@ -223,6 +225,12 @@ class ClientController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Numéro du destinataire invalide']);
         }
 
+        // Vérifier si le destinataire est un autre opérateur
+        $operateurModel = new OperateurModel();
+        $prefixe = substr($destinataire, 0, 3);
+        $operateurDest = $operateurModel->findByPrefixe($prefixe);
+
+        // Vérifier les préfixes valides
         if (!$this->configurationModel->isValidPrefix($destinataire)) {
             return $this->response->setJSON(['success' => false, 'message' => 'Préfixe du destinataire invalide']);
         }
@@ -241,7 +249,16 @@ class ClientController extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Type d\'opération non trouvé']);
         }
 
+        // Calculer les frais
         $frais = $this->fraisBaremeModel->calculerFrais($typeTransfert['id'], $montant);
+        
+        // Calculer la commission si vers un autre opérateur
+        $commission = 0;
+        $operateurDestId = null;
+        if ($operateurDest && $operateurDest['id'] != 1) {
+            $commission = ($montant * $operateurDest['commission_pourcentage']) / 100;
+            $operateurDestId = $operateurDest['id'];
+        }
 
         $operationData = [
             'client_id' => $this->session->get('client_id'),
@@ -249,6 +266,8 @@ class ClientController extends BaseController
             'montant' => $montant,
             'frais' => $frais,
             'client_destinataire_id' => $destinataireClient['id'],
+            'operateur_destinataire_id' => $operateurDestId,
+            'frais_commission' => $commission,
         ];
 
         $result = $this->operationModel->createOperation($operationData);
@@ -260,6 +279,7 @@ class ClientController extends BaseController
                 'message' => 'Transfert effectué avec succès',
                 'nouveau_solde' => number_format($result['nouveau_solde'], 2, ',', ' ') . ' Ar',
                 'frais' => number_format($frais, 2, ',', ' ') . ' Ar',
+                'commission' => number_format($commission, 2, ',', ' ') . ' Ar',
             ]);
         }
 

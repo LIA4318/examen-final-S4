@@ -6,34 +6,35 @@ use CodeIgniter\Model;
 
 class ConfigurationModel extends Model
 {
-    protected $table            = 'prefixes';
-    protected $primaryKey       = 'id';
+    protected $table = 'prefixes';
+    protected $primaryKey = 'id';
     protected $useAutoIncrement = true;
-    protected $returnType       = 'array';
-    protected $useSoftDeletes   = false;
-    protected $protectFields    = true;
+    protected $returnType = 'array';
+    protected $useSoftDeletes = false;
+    protected $protectFields = true;
     protected $allowedFields = ['prefixe'];
 
-    /**
-     * Récupérer les préfixes valides
-     */
     public function getPrefixes()
     {
-        $results = $this->findAll();
+        // Récupérer les préfixes depuis la table operateurs
+        $db = \Config\Database::connect();
+        $results = $db->query("SELECT DISTINCT prefixe FROM operateurs WHERE actif = 1")->getResultArray();
+        
         if (empty($results)) {
-            return ['033', '037']; // Préfixes par défaut
+            return ['032', '033', '034', '037', '038']; // Préfixes par défaut
         }
         
         $prefixes = [];
         foreach ($results as $row) {
-            $prefixes[] = $row['prefixe'];
+            // Gérer les préfixes multiples séparés par des virgules
+            $parts = explode(',', $row['prefixe']);
+            foreach ($parts as $part) {
+                $prefixes[] = trim($part);
+            }
         }
-        return $prefixes;
+        return array_unique($prefixes);
     }
 
-    /**
-     * Mettre à jour les préfixes
-     */
     public function updatePrefixes($prefixes)
     {
         // Supprimer tous les préfixes existants
@@ -48,9 +49,6 @@ class ConfigurationModel extends Model
         return $this->insertBatch($data);
     }
 
-    /**
-     * Vérifier si un numéro a un préfixe valide
-     */
     public function isValidPrefix($telephone)
     {
         $prefixes = $this->getPrefixes();

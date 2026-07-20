@@ -7,6 +7,7 @@ use App\Models\TypeOperationModel;
 use App\Models\FraisBaremeModel;
 use App\Models\OperationModel;
 use App\Models\ConfigurationModel;
+use App\Models\OperateurModel;
 
 class OperateurController extends BaseController
 {
@@ -15,6 +16,7 @@ class OperateurController extends BaseController
     protected $fraisBaremeModel;
     protected $operationModel;
     protected $configurationModel;
+    protected $operateurModel;
 
     public function __construct()
     {
@@ -23,15 +25,15 @@ class OperateurController extends BaseController
         $this->fraisBaremeModel = new FraisBaremeModel();
         $this->operationModel = new OperationModel();
         $this->configurationModel = new ConfigurationModel();
+        $this->operateurModel = new OperateurModel();
     }
 
-    // ============ DASHBOARD ============
     public function index()
     {
         $stats_clients = $this->clientModel->getStats();
         $stats_operations = $this->operationModel->getStats();
         $gains_frais = $this->operationModel->getGainsFrais();
-        
+
         $data = [
             'title' => 'Dashboard Opérateur',
             'stats_clients' => $stats_clients,
@@ -42,7 +44,6 @@ class OperateurController extends BaseController
         return view('operateur/dashboard', $data);
     }
 
-    // ============ CONFIGURATION DES PREFIXES ============
     public function prefixes()
     {
         $data = [
@@ -55,16 +56,15 @@ class OperateurController extends BaseController
     public function updatePrefixes()
     {
         $prefixesInput = $this->request->getPost('prefixes');
-        
-        // Convertir la chaîne en tableau
+
         if (is_string($prefixesInput)) {
             $prefixes = array_map('trim', explode(',', $prefixesInput));
         } else {
             $prefixes = $prefixesInput;
         }
-        
+
         $result = $this->configurationModel->updatePrefixes($prefixes);
-        
+
         if ($result) {
             return redirect()->to('/operateur/prefixes')
                            ->with('success', 'Préfixes mis à jour avec succès');
@@ -73,7 +73,87 @@ class OperateurController extends BaseController
                        ->with('error', 'Erreur lors de la mise à jour des préfixes');
     }
 
-    // ============ GESTION DES TYPES D'OPÉRATIONS ============
+    // ============================================
+    // VERSION 2 - GESTION DES OPÉRATEURS
+    // ============================================
+    
+    public function operateurs()
+    {
+        $data = [
+            'title' => 'Gestion des Opérateurs',
+            'operateurs' => $this->operateurModel->findAll()
+        ];
+        return view('operateur/operateurs', $data);
+    }
+
+    public function createOperateur()
+    {
+        $data = ['title' => 'Ajouter un Opérateur'];
+        return view('operateur/operateur_create', $data);
+    }
+
+    public function storeOperateur()
+    {
+        $data = [
+            'nom' => $this->request->getPost('nom'),
+            'code' => strtoupper($this->request->getPost('code')),
+            'prefixe' => $this->request->getPost('prefixe'),
+            'commission_pourcentage' => $this->request->getPost('commission_pourcentage') ?? 0,
+            'actif' => $this->request->getPost('actif') ? 1 : 0
+        ];
+
+        if ($this->operateurModel->save($data)) {
+            return redirect()->to('/operateur/operateurs')
+                           ->with('success', 'Opérateur ajouté avec succès');
+        }
+        return redirect()->back()
+                       ->with('errors', $this->operateurModel->errors())
+                       ->withInput();
+    }
+
+    public function editOperateur($id)
+    {
+        $operateur = $this->operateurModel->find($id);
+        if (!$operateur) {
+            return redirect()->to('/operateur/operateurs')
+                           ->with('error', 'Opérateur non trouvé');
+        }
+        $data = [
+            'title' => 'Modifier Opérateur',
+            'operateur' => $operateur
+        ];
+        return view('operateur/operateur_edit', $data);
+    }
+
+    public function updateOperateur($id)
+    {
+        $data = [
+            'nom' => $this->request->getPost('nom'),
+            'code' => strtoupper($this->request->getPost('code')),
+            'prefixe' => $this->request->getPost('prefixe'),
+            'commission_pourcentage' => $this->request->getPost('commission_pourcentage') ?? 0,
+            'actif' => $this->request->getPost('actif') ? 1 : 0
+        ];
+
+        if ($this->operateurModel->update($id, $data)) {
+            return redirect()->to('/operateur/operateurs')
+                           ->with('success', 'Opérateur modifié avec succès');
+        }
+        return redirect()->back()
+                       ->with('errors', $this->operateurModel->errors())
+                       ->withInput();
+    }
+
+    public function deleteOperateur($id)
+    {
+        if ($this->operateurModel->delete($id)) {
+            return redirect()->to('/operateur/operateurs')
+                           ->with('success', 'Opérateur supprimé');
+        }
+        return redirect()->to('/operateur/operateurs')
+                       ->with('error', 'Erreur lors de la suppression');
+    }
+
     public function typesOperations()
     {
         $data = [
@@ -85,17 +165,13 @@ class OperateurController extends BaseController
 
     public function createType()
     {
-        $data = [
-            'title' => 'Ajouter un Type d\'Opération'
-        ];
+        $data = ['title' => 'Ajouter un Type d\'Opération'];
         return view('operateur/type_create', $data);
     }
 
     public function storeType()
     {
-        $data = [
-            'libelle' => strtolower($this->request->getPost('libelle'))
-        ];
+        $data = ['libelle' => strtolower($this->request->getPost('libelle'))];
 
         if ($this->typeOperationModel->save($data)) {
             return redirect()->to('/operateur/types-operations')
@@ -122,9 +198,7 @@ class OperateurController extends BaseController
 
     public function updateType($id)
     {
-        $data = [
-            'libelle' => strtolower($this->request->getPost('libelle'))
-        ];
+        $data = ['libelle' => strtolower($this->request->getPost('libelle'))];
 
         if ($this->typeOperationModel->update($id, $data)) {
             return redirect()->to('/operateur/types-operations')
@@ -145,7 +219,6 @@ class OperateurController extends BaseController
                        ->with('error', 'Erreur lors de la suppression');
     }
 
-    // ============ GESTION DES BARÈMES DE FRAIS ============
     public function baremes()
     {
         $data = [
@@ -175,12 +248,7 @@ class OperateurController extends BaseController
             'frais' => $this->request->getPost('frais')
         ];
 
-        // Vérifier les chevauchements
-        if ($this->fraisBaremeModel->hasOverlap(
-            $data['type_operation_id'],
-            $data['montant_min'],
-            $data['montant_max']
-        )) {
+        if ($this->fraisBaremeModel->hasOverlap($data['type_operation_id'], $data['montant_min'], $data['montant_max'])) {
             return redirect()->back()
                            ->with('error', 'Ce barème chevauche un barème existant')
                            ->withInput();
@@ -219,13 +287,7 @@ class OperateurController extends BaseController
             'frais' => $this->request->getPost('frais')
         ];
 
-        // Vérifier les chevauchements en excluant le barème actuel
-        if ($this->fraisBaremeModel->hasOverlap(
-            $data['type_operation_id'],
-            $data['montant_min'],
-            $data['montant_max'],
-            $id
-        )) {
+        if ($this->fraisBaremeModel->hasOverlap($data['type_operation_id'], $data['montant_min'], $data['montant_max'], $id)) {
             return redirect()->back()
                            ->with('error', 'Ce barème chevauche un barème existant')
                            ->withInput();
@@ -250,7 +312,6 @@ class OperateurController extends BaseController
                        ->with('error', 'Erreur lors de la suppression');
     }
 
-    // ============ SITUATION DES COMPTES CLIENTS ============
     public function clients()
     {
         $data = [
@@ -277,14 +338,32 @@ class OperateurController extends BaseController
         return view('operateur/client_detail', $data);
     }
 
-    // ============ STATISTIQUES GLOBALES ============
+    // ============================================
+    // VERSION 2 - SITUATION DES GAINS
+    // ============================================
+    
+    public function situationGains()
+    {
+        $gains_principal = $this->operationModel->getStats();
+        $gains_autres = $this->operationModel->getGainsParOperateur();
+        $montants_a_envoyer = $this->operationModel->getMontantsAEnvoyer();
+
+        $data = [
+            'title' => 'Situation des Gains',
+            'gains_principal' => $gains_principal,
+            'gains_autres' => $gains_autres,
+            'montants_a_envoyer' => $montants_a_envoyer
+        ];
+        return view('operateur/situation_gains', $data);
+    }
+
     public function statistiques()
     {
         $stats_clients = $this->clientModel->getStats();
         $stats_operations = $this->operationModel->getStats();
         $gains_frais = $this->operationModel->getGainsFrais();
         $operations_par_jour = $this->operationModel->getTransactionsParJour(30);
-        
+
         $data = [
             'title' => 'Statistiques Globales',
             'stats_clients' => $stats_clients,
