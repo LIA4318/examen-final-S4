@@ -124,3 +124,37 @@
 - dashboard.php - Solde + formulaires dépôt/retrait/transfert en AJAX + accès historique
 - historique.php - Tableau complet des transactions
 
+## VERSION 2: COTE OPERATEUR (OK)
+
+## [LIANTSOA]
+1. Configuration des préfixes pour les autres opérateurs (OK)
+- Table operateurs créée avec les colonnes : id, nom, code, prefixe, commission_pourcentage, actif
+- CRUD complet des opérateurs (Liste, Ajout, Modification, Suppression)
+- Gestion des préfixes (033, 032, 038, 034, etc.)
+- Interface : /operateur/operateurs, /operateur/create, /operateur/edit/{id}, /operateur/delete/{id}
+
+## [LIANTSOA]
+2. Configuration des commissions pour transferts vers autres opérateurs  (OK)
+- Colonne commission_pourcentage dans la table operateurs
+- Colonne frais_commission dans la table transactions
+- Colonne operateur_destinataire_id dans la table transactions
+- Calcul automatique de la commission lors d'un transfert vers un autre opérateur
+- Intégration dans ClientController::doTransfert()
+
+## [LIANTSOA]
+3. Situation des gains - Séparation opérateur / autres opérateurs (OK)
+- Page /operateur/situation-gains avec deux sections :
+- Opérateur Principal : gains via les frais (dépôt, retrait, transfert)
+- Autres Opérateurs : gains via les commissions et frais
+- Méthodes dans OperationModel :
+- getGainsParOperateur() : gains par opérateur
+- getMontantsAEnvoyer() : montants à envoyer
+
+## [LIANTSOA]
+4. Situation des montants à envoyer à chaque opérateur (OK)
+- Affichage dans la page situation-gains :
+      - Nom de l'opérateur
+      - réfixe
+      - Nombre de transactions
+      - Montant total
+      - Commission totale
