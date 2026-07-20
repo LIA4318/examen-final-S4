@@ -94,3 +94,55 @@ INSERT INTO clients (numero_telephone, solde) VALUES
 ('0331234567', 10000),
 ('0372345678', 5000),
 ('0339876543', 0);
+
+
+
+-- ============================================
+-- VERSION 2 - MOBILE MONEY
+-- ============================================
+
+-- Table des opérateurs
+CREATE TABLE IF NOT EXISTS operateurs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom VARCHAR(100) NOT NULL,
+    code VARCHAR(20) NOT NULL UNIQUE,
+    prefixe VARCHAR(10) NOT NULL,
+    commission_pourcentage DECIMAL(5,2) DEFAULT 0,
+    actif BOOLEAN DEFAULT 1,
+    date_creation DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Ajout des colonnes dans transactions
+ALTER TABLE transactions ADD COLUMN operateur_id INTEGER;
+ALTER TABLE transactions ADD COLUMN commission DECIMAL(15,2) DEFAULT 0;
+ALTER TABLE transactions ADD COLUMN frais_inclus BOOLEAN DEFAULT 0;
+ALTER TABLE transactions ADD COLUMN envoi_multiple_id INTEGER;
+
+-- Table des envois multiples
+CREATE TABLE IF NOT EXISTS envois_multiples (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER NOT NULL,
+    montant_total DECIMAL(15,2) NOT NULL,
+    nb_destinataires INTEGER DEFAULT 0,
+    statut VARCHAR(20) DEFAULT 'EN_ATTENTE',
+    date_creation DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (client_id) REFERENCES clients(id)
+);
+
+-- Table des détails d'envois multiples
+CREATE TABLE IF NOT EXISTS envois_multiples_details (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    envoi_multiple_id INTEGER NOT NULL,
+    destinataire_telephone VARCHAR(20) NOT NULL,
+    montant DECIMAL(15,2) NOT NULL,
+    statut VARCHAR(20) DEFAULT 'EN_ATTENTE',
+    date_execution DATETIME,
+    FOREIGN KEY (envoi_multiple_id) REFERENCES envois_multiples(id)
+);
+
+-- Insertion des opérateurs par défaut
+INSERT OR IGNORE INTO operateurs (nom, code, prefixe, commission_pourcentage) VALUES 
+('Opérateur Principal', 'MOMO', '033,034,037', 0),
+('Orange', 'ORANGE', '032,033', 2.5),
+('Telma', 'TELMA', '034', 2.0),
+('Airtel', 'AIRTEL', '031', 3.0);
