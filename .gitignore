@@ -31,3 +31,5 @@ writable/database.db
 # Système
 .DS_Store
 Thumbs.db
+public/writable/session/*
+public/writable/database.db
