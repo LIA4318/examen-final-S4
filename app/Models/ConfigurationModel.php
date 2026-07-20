@@ -6,27 +6,29 @@ use CodeIgniter\Model;
 
 class ConfigurationModel extends Model
 {
-    protected $table            = 'configurations';
+    protected $table            = 'prefixes';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields = ['cle', 'valeur', 'description'];
+    protected $allowedFields = ['prefixe'];
 
     /**
      * Récupérer les préfixes valides
      */
     public function getPrefixes()
     {
-        $result = $this->where('cle', 'prefixes_valides')->first();
-        if (!$result) {
+        $results = $this->findAll();
+        if (empty($results)) {
             return ['033', '037']; // Préfixes par défaut
         }
         
-        // Convertir la chaîne en tableau
-        $prefixes = explode(',', $result['valeur']);
-        return array_map('trim', $prefixes);
+        $prefixes = [];
+        foreach ($results as $row) {
+            $prefixes[] = $row['prefixe'];
+        }
+        return $prefixes;
     }
 
     /**
@@ -34,38 +36,29 @@ class ConfigurationModel extends Model
      */
     public function updatePrefixes($prefixes)
     {
-        if (is_array($prefixes)) {
-            $prefixes = implode(',', $prefixes);
+        // Supprimer tous les préfixes existants
+        $this->truncate();
+        
+        // Insérer les nouveaux préfixes
+        $data = [];
+        foreach ($prefixes as $prefix) {
+            $data[] = ['prefixe' => trim($prefix)];
         }
         
-        return $this->where('cle', 'prefixes_valides')
-                    ->set(['valeur' => $prefixes])
-                    ->update();
+        return $this->insertBatch($data);
     }
 
     /**
-     * Récupérer une configuration
+     * Vérifier si un numéro a un préfixe valide
      */
-    public function getConfig($key)
+    public function isValidPrefix($telephone)
     {
-        $result = $this->where('cle', $key)->first();
-        return $result ? $result['valeur'] : null;
-    }
-
-    /**
-     * Mettre à jour une configuration
-     */
-    public function setConfig($key, $value)
-    {
-        $exists = $this->where('cle', $key)->countAllResults() > 0;
-        
-        if ($exists) {
-            return $this->where('cle', $key)->set(['valeur' => $value])->update();
-        } else {
-            return $this->insert([
-                'cle' => $key,
-                'valeur' => $value
-            ]);
+        $prefixes = $this->getPrefixes();
+        foreach ($prefixes as $prefix) {
+            if (strpos($telephone, $prefix) === 0) {
+                return true;
+            }
         }
+        return false;
     }
 }

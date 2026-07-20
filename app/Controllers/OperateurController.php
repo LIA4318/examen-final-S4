@@ -28,12 +28,16 @@ class OperateurController extends BaseController
     // ============ DASHBOARD ============
     public function index()
     {
+        $stats_clients = $this->clientModel->getStats();
+        $stats_operations = $this->operationModel->getStats();
+        $gains_frais = $this->operationModel->getGainsFrais();
+        
         $data = [
             'title' => 'Dashboard Opérateur',
-            'stats_clients' => $this->clientModel->getStats(),
-            'stats_operations' => $this->operationModel->getStats(),
-            'gains_frais' => $this->operationModel->getGainsFrais(),
-            'total_gains' => array_sum(array_column($this->operationModel->getGainsFrais(), 'total_gains'))
+            'stats_clients' => $stats_clients,
+            'stats_operations' => $stats_operations,
+            'gains_frais' => $gains_frais,
+            'total_gains' => array_sum(array_column($gains_frais, 'total_gains')) ?? 0
         ];
         return view('operateur/dashboard', $data);
     }
@@ -50,7 +54,15 @@ class OperateurController extends BaseController
 
     public function updatePrefixes()
     {
-        $prefixes = $this->request->getPost('prefixes');
+        $prefixesInput = $this->request->getPost('prefixes');
+        
+        // Convertir la chaîne en tableau
+        if (is_string($prefixesInput)) {
+            $prefixes = array_map('trim', explode(',', $prefixesInput));
+        } else {
+            $prefixes = $prefixesInput;
+        }
+        
         $result = $this->configurationModel->updatePrefixes($prefixes);
         
         if ($result) {
@@ -82,10 +94,7 @@ class OperateurController extends BaseController
     public function storeType()
     {
         $data = [
-            'nom' => $this->request->getPost('nom'),
-            'code' => strtoupper($this->request->getPost('code')),
-            'description' => $this->request->getPost('description'),
-            'actif' => $this->request->getPost('actif') ? 1 : 0
+            'libelle' => strtolower($this->request->getPost('libelle'))
         ];
 
         if ($this->typeOperationModel->save($data)) {
@@ -114,10 +123,7 @@ class OperateurController extends BaseController
     public function updateType($id)
     {
         $data = [
-            'nom' => $this->request->getPost('nom'),
-            'code' => strtoupper($this->request->getPost('code')),
-            'description' => $this->request->getPost('description'),
-            'actif' => $this->request->getPost('actif') ? 1 : 0
+            'libelle' => strtolower($this->request->getPost('libelle'))
         ];
 
         if ($this->typeOperationModel->update($id, $data)) {
@@ -144,7 +150,7 @@ class OperateurController extends BaseController
     {
         $data = [
             'title' => 'Barèmes de Frais',
-            'types' => $this->typeOperationModel->getActiveTypes(),
+            'types' => $this->typeOperationModel->findAll(),
             'baremes' => $this->fraisBaremeModel->findAll(),
             'stats_frais' => $this->fraisBaremeModel->getStatsFrais()
         ];
@@ -155,7 +161,7 @@ class OperateurController extends BaseController
     {
         $data = [
             'title' => 'Ajouter un Barème de Frais',
-            'types' => $this->typeOperationModel->getActiveTypes()
+            'types' => $this->typeOperationModel->findAll()
         ];
         return view('operateur/bareme_create', $data);
     }
@@ -166,9 +172,7 @@ class OperateurController extends BaseController
             'type_operation_id' => $this->request->getPost('type_operation_id'),
             'montant_min' => $this->request->getPost('montant_min'),
             'montant_max' => $this->request->getPost('montant_max'),
-            'frais_fixe' => $this->request->getPost('frais_fixe') ?? 0,
-            'frais_pourcentage' => $this->request->getPost('frais_pourcentage') ?? 0,
-            'actif' => $this->request->getPost('actif') ? 1 : 0
+            'frais' => $this->request->getPost('frais')
         ];
 
         // Vérifier les chevauchements
@@ -201,7 +205,7 @@ class OperateurController extends BaseController
         $data = [
             'title' => 'Modifier Barème',
             'bareme' => $bareme,
-            'types' => $this->typeOperationModel->getActiveTypes()
+            'types' => $this->typeOperationModel->findAll()
         ];
         return view('operateur/bareme_edit', $data);
     }
@@ -212,9 +216,7 @@ class OperateurController extends BaseController
             'type_operation_id' => $this->request->getPost('type_operation_id'),
             'montant_min' => $this->request->getPost('montant_min'),
             'montant_max' => $this->request->getPost('montant_max'),
-            'frais_fixe' => $this->request->getPost('frais_fixe') ?? 0,
-            'frais_pourcentage' => $this->request->getPost('frais_pourcentage') ?? 0,
-            'actif' => $this->request->getPost('actif') ? 1 : 0
+            'frais' => $this->request->getPost('frais')
         ];
 
         // Vérifier les chevauchements en excluant le barème actuel
@@ -278,27 +280,19 @@ class OperateurController extends BaseController
     // ============ STATISTIQUES GLOBALES ============
     public function statistiques()
     {
-        $db = \Config\Database::connect();
+        $stats_clients = $this->clientModel->getStats();
+        $stats_operations = $this->operationModel->getStats();
+        $gains_frais = $this->operationModel->getGainsFrais();
+        $operations_par_jour = $this->operationModel->getTransactionsParJour(30);
         
         $data = [
             'title' => 'Statistiques Globales',
-            'stats_clients' => $this->clientModel->getStats(),
-            'stats_operations' => $this->operationModel->getStats(),
-            'gains_frais' => $this->operationModel->getGainsFrais(),
+            'stats_clients' => $stats_clients,
+            'stats_operations' => $stats_operations,
+            'gains_frais' => $gains_frais,
             'stats_frais' => $this->fraisBaremeModel->getStatsFrais(),
-            'total_gains' => array_sum(array_column($this->operationModel->getGainsFrais(), 'total_gains')),
-            'operations_par_jour' => $db->query("
-                SELECT 
-                    DATE(date_creation) as date,
-                    COUNT(*) as nb_operations,
-                    SUM(montant) as total_montant,
-                    SUM(frais) as total_frais
-                FROM operations
-                WHERE statut = 'SUCCES'
-                GROUP BY DATE(date_creation)
-                ORDER BY date DESC
-                LIMIT 30
-            ")->getResultArray()
+            'total_gains' => array_sum(array_column($gains_frais, 'total_gains')) ?? 0,
+            'operations_par_jour' => $operations_par_jour
         ];
         return view('operateur/statistiques', $data);
     }

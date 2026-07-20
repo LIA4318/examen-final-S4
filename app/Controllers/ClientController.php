@@ -20,6 +20,11 @@ class ClientController extends BaseController
         $this->typeOperationModel = new TypeOperationModel();
         $this->fraisBaremeModel = new FraisBaremeModel();
         $this->operationModel = new OperationModel();
+        
+        // Démarrer la session si ce n'est pas déjà fait
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
     }
 
     /**
@@ -28,7 +33,7 @@ class ClientController extends BaseController
     public function login()
     {
         // Si déjà connecté, rediriger vers le dashboard
-        if (session('client_id')) {
+        if (isset($_SESSION['client_id'])) {
             return redirect()->to('/client/dashboard');
         }
 
@@ -69,9 +74,9 @@ class ClientController extends BaseController
         // Note: votre table n'a pas ce champ, on le fait juste pour la session
 
         // Stocker en session
-        session()->set('client_id', $client['id']);
-        session()->set('client_telephone', $client['numero_telephone']);
-        session()->set('client_solde', $client['solde']);
+        $_SESSION['client_id'] = $client['id'];
+        $_SESSION['client_telephone'] = $client['numero_telephone'];
+        $_SESSION['client_solde'] = $client['solde'];
 
         return redirect()->to('/client/dashboard');
     }
@@ -79,30 +84,31 @@ class ClientController extends BaseController
     /**
      * Dashboard client
      */
-    public function dashboard()
-    {
-        if (!session('client_id')) {
-            return redirect()->to('/client/login');
-        }
-
-        $client = $this->clientModel->find(session('client_id'));
-        $historique = $this->operationModel->getClientHistory(session('client_id'), 10);
-
-        $data = [
-            'title' => 'Dashboard - Mobile Money',
-            'client' => $client,
-            'historique' => $historique ?? [],
-            'solde' => number_format($client['solde'], 2, ',', ' ') . ' Ar'
-        ];
-        return view('client/dashboard', $data);
+ public function dashboard()
+{
+    if (!isset($_SESSION['client_id'])) {
+        return redirect()->to('/client/login');
     }
+
+    $client = $this->clientModel->find($_SESSION['client_id']);
+    // Utiliser la nouvelle méthode avec le nom du type
+    $historique = $this->operationModel->getClientHistoryWithType($_SESSION['client_id'], 10);
+
+    $data = [
+        'title' => 'Dashboard - Mobile Money',
+        'client' => $client,
+        'historique' => $historique,
+        'solde' => number_format($client['solde'], 2, ',', ' ') . ' Ar'
+    ];
+    return view('client/dashboard', $data);
+}
 
     /**
      * Faire un dépôt
      */
     public function depot()
     {
-        if (!session('client_id')) {
+        if (!isset($_SESSION['client_id'])) {
             return redirect()->to('/client/login');
         }
 
@@ -117,7 +123,7 @@ class ClientController extends BaseController
      */
     public function doDepot()
     {
-        if (!session('client_id')) {
+        if (!isset($_SESSION['client_id'])) {
             return $this->response->setJSON(['success' => false, 'message' => 'Non connecté']);
         }
 
@@ -135,7 +141,7 @@ class ClientController extends BaseController
 
         // Créer l'opération
         $operationData = [
-            'client_id' => session('client_id'),
+            'client_id' => $_SESSION['client_id'],
             'type_operation_id' => $typeDepot['id'],
             'montant' => $montant,
             'description' => 'Dépôt automatique'
@@ -145,7 +151,7 @@ class ClientController extends BaseController
 
         if ($result['success']) {
             // Mettre à jour le solde en session
-            session()->set('client_solde', $result['nouveau_solde']);
+            $_SESSION['client_solde'] = $result['nouveau_solde'];
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Dépôt effectué avec succès',
@@ -164,7 +170,7 @@ class ClientController extends BaseController
      */
     public function retrait()
     {
-        if (!session('client_id')) {
+        if (!isset($_SESSION['client_id'])) {
             return redirect()->to('/client/login');
         }
 
@@ -179,7 +185,7 @@ class ClientController extends BaseController
      */
     public function doRetrait()
     {
-        if (!session('client_id')) {
+        if (!isset($_SESSION['client_id'])) {
             return $this->response->setJSON(['success' => false, 'message' => 'Non connecté']);
         }
 
@@ -200,7 +206,7 @@ class ClientController extends BaseController
 
         // Créer l'opération
         $operationData = [
-            'client_id' => session('client_id'),
+            'client_id' => $_SESSION['client_id'],
             'type_operation_id' => $typeRetrait['id'],
             'montant' => $montant,
             'frais' => $frais,
@@ -210,7 +216,7 @@ class ClientController extends BaseController
         $result = $this->operationModel->createOperation($operationData);
 
         if ($result['success']) {
-            session()->set('client_solde', $result['nouveau_solde']);
+            $_SESSION['client_solde'] = $result['nouveau_solde'];
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Retrait effectué avec succès',
@@ -230,7 +236,7 @@ class ClientController extends BaseController
      */
     public function transfert()
     {
-        if (!session('client_id')) {
+        if (!isset($_SESSION['client_id'])) {
             return redirect()->to('/client/login');
         }
 
@@ -244,97 +250,97 @@ class ClientController extends BaseController
      * Traiter le transfert
      */
     public function doTransfert()
-    {
-        if (!session('client_id')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Non connecté']);
-        }
+{
+    if (!isset($_SESSION['client_id'])) {
+        return $this->response->setJSON(['success' => false, 'message' => 'Non connecté']);
+    }
 
-        $montant = $this->request->getPost('montant');
-        $destinataire = $this->request->getPost('destinataire');
-        
-        if (empty($montant) || $montant <= 0) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Montant invalide']);
-        }
+    $montant = $this->request->getPost('montant');
+    $destinataire = $this->request->getPost('destinataire');
+    
+    if (empty($montant) || $montant <= 0) {
+        return $this->response->setJSON(['success' => false, 'message' => 'Montant invalide']);
+    }
 
-        if (empty($destinataire)) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Numéro du destinataire requis']);
-        }
+    if (empty($destinataire)) {
+        return $this->response->setJSON(['success' => false, 'message' => 'Numéro du destinataire requis']);
+    }
 
-        // Nettoyer le numéro
-        $destinataire = preg_replace('/[^0-9]/', '', $destinataire);
+    // Nettoyer le numéro
+    $destinataire = preg_replace('/[^0-9]/', '', $destinataire);
 
-        // Vérifier que le destinataire existe
-        $destinataireClient = $this->clientModel->findByTelephone($destinataire);
-        if (!$destinataireClient) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Client destinataire non trouvé']);
-        }
+    // Vérifier que le destinataire existe
+    $destinataireClient = $this->clientModel->findByTelephone($destinataire);
+    if (!$destinataireClient) {
+        return $this->response->setJSON(['success' => false, 'message' => 'Destinataire non trouvé']);
+    }
 
-        // Vérifier que ce n'est pas le même compte
-        if ($destinataire === session('client_telephone')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Vous ne pouvez pas vous transférer à vous-même']);
-        }
+    // Vérifier que ce n'est pas le même compte
+    if ($destinataire == $_SESSION['client_telephone']) {
+        return $this->response->setJSON(['success' => false, 'message' => 'Vous ne pouvez pas vous transférer à vous-même']);
+    }
 
-        // Récupérer le type TRANSFERT
-        $typeTransfert = $this->typeOperationModel->findByLibelle('transfert');
-        if (!$typeTransfert) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Type d\'opération non trouvé']);
-        }
+    // Récupérer le type TRANSFERT
+    $typeTransfert = $this->typeOperationModel->findByLibelle('transfert');
+    if (!$typeTransfert) {
+        return $this->response->setJSON(['success' => false, 'message' => 'Type d\'opération non trouvé']);
+    }
 
-        // Calculer les frais
-        $frais = $this->fraisBaremeModel->calculerFrais($typeTransfert['id'], $montant);
+    // Calculer les frais
+    $frais = $this->fraisBaremeModel->calculerFrais($typeTransfert['id'], $montant);
 
-        // Créer l'opération
-        $operationData = [
-            'client_id' => session('client_id'),
-            'type_operation_id' => $typeTransfert['id'],
-            'montant' => $montant,
-            'frais' => $frais,
-            'destinataire_id' => $destinataireClient['id'],
-            'description' => 'Transfert vers ' . $destinataire
-        ];
+    // Créer l'opération - utiliser client_destinataire_id
+    $operationData = [
+        'client_id' => $_SESSION['client_id'],
+        'type_operation_id' => $typeTransfert['id'],
+        'montant' => $montant,
+        'frais' => $frais,
+        'client_destinataire_id' => $destinataireClient['id']
+    ];
 
-        $result = $this->operationModel->createOperation($operationData);
+    $result = $this->operationModel->createOperation($operationData);
 
-        if ($result['success']) {
-            session()->set('client_solde', $result['nouveau_solde']);
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Transfert effectué avec succès',
-                'nouveau_solde' => number_format($result['nouveau_solde'], 2, ',', ' ') . ' Ar',
-                'frais' => number_format($frais, 2, ',', ' ') . ' Ar'
-            ]);
-        }
-
+    if ($result['success']) {
+        $_SESSION['client_solde'] = $result['nouveau_solde'];
         return $this->response->setJSON([
-            'success' => false,
-            'message' => $result['message']
+            'success' => true,
+            'message' => 'Transfert effectué avec succès',
+            'nouveau_solde' => number_format($result['nouveau_solde'], 2, ',', ' ') . ' Ar',
+            'frais' => number_format($frais, 2, ',', ' ') . ' Ar'
         ]);
     }
+
+    return $this->response->setJSON([
+        'success' => false,
+        'message' => $result['message']
+    ]);
+}
 
     /**
      * Voir l'historique complet
      */
-    public function historique()
-    {
-        if (!session('client_id')) {
-            return redirect()->to('/client/login');
-        }
-
-        $historique = $this->operationModel->getClientHistory(session('client_id'), 100);
-
-        $data = [
-            'title' => 'Historique - Mobile Money',
-            'historique' => $historique
-        ];
-        return view('client/historique', $data);
+  public function historique()
+{
+    if (!isset($_SESSION['client_id'])) {
+        return redirect()->to('/client/login');
     }
+
+    // Utiliser la nouvelle méthode avec le nom du type
+    $historique = $this->operationModel->getClientHistoryWithType($_SESSION['client_id'], 100);
+
+    $data = [
+        'title' => 'Historique - Mobile Money',
+        'historique' => $historique
+    ];
+    return view('client/historique', $data);
+}
 
     /**
      * Déconnexion
      */
     public function logout()
     {
-        session()->destroy();
+        session_destroy();
         return redirect()->to('/client/login');
     }
 
@@ -343,11 +349,11 @@ class ClientController extends BaseController
      */
     public function getSolde()
     {
-        if (!session('client_id')) {
+        if (!isset($_SESSION['client_id'])) {
             return $this->response->setJSON(['success' => false, 'message' => 'Non connecté']);
         }
 
-        $client = $this->clientModel->find(session('client_id'));
+        $client = $this->clientModel->find($_SESSION['client_id']);
         return $this->response->setJSON([
             'success' => true,
             'solde' => number_format($client['solde'], 2, ',', ' ') . ' Ar'
