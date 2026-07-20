@@ -16,20 +16,32 @@
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-white border-0">
                         <h4 class="mb-0"><i class="fas fa-exchange-alt text-info"></i> Transfert</h4>
-                        <small class="text-muted">Transférez facilement vers un autre numéro valide.</small>
+                        <small class="text-muted">Transférez facilement vers un ou plusieurs numéros du même opérateur.</small>
                     </div>
                     <div class="card-body">
+                        <?php if (!empty($prefixes)): ?>
+                            <div class="alert alert-info">
+                                Numéros autorisés : <strong><?= esc(implode(', ', $prefixes)) ?></strong>. Envoi possible uniquement vers le même opérateur.
+                            </div>
+                        <?php endif; ?>
                         <div id="result"></div>
                         <form id="transfertForm">
                             <div class="mb-4">
-                                <label class="form-label">Numéro du destinataire</label>
-                                <input type="tel" name="destinataire" class="form-control form-control-lg" placeholder="Ex : 0331234567" required>
-                                <div class="form-text">Le destinataire doit être un client existant de l'opérateur.</div>
+                                <label class="form-label">Numéros des destinataires</label>
+                                <textarea name="destinataires" class="form-control form-control-lg" rows="4" placeholder="Ex : 0331234567, 0339876543" required></textarea>
+                                <div class="form-text">Séparez plusieurs numéros par des virgules, des points-virgules ou des retours à la ligne. Le montant sera divisé automatiquement entre tous les destinataires.</div>
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="inclureFrais" name="inclure_frais" checked>
+                                <label class="form-check-label" for="inclureFrais">Je prends en charge les frais de transfert. Sinon, les frais seront déduits du montant envoyé.</label>
                             </div>
                             <div class="mb-4">
-                                <label class="form-label">Montant à transférer (Ar)</label>
-                                <input type="number" name="montant" class="form-control form-control-lg" placeholder="Ex : 10000" min="100" required>
-                                <div class="form-text">Les frais sont calculés automatiquement en fonction du barème.</div>
+                                <label class="form-label">Montant total à transférer (Ar)</label>
+                                <input type="number" name="montant" id="transfertMontant" class="form-control form-control-lg" placeholder="Ex : 10000" min="100" required>
+                                <div class="form-text">Les frais sont calculés automatiquement selon le barème. Le montant indiqué sera partagé entre tous les destinataires.</div>
+                            </div>
+                            <div class="mb-4">
+                                <div id="preview" class="alert alert-secondary d-none"></div>
                             </div>
                             <button type="submit" class="btn btn-primary btn-lg w-100">
                                 <i class="fas fa-check me-2"></i> Effectuer le transfert
@@ -42,7 +54,54 @@
     </div>
 
     <script>
-        document.getElementById('transfertForm').addEventListener('submit', function(e) {
+        const preview = document.getElementById('preview');
+        const transfertForm = document.getElementById('transfertForm');
+        const destinatairesField = transfertForm.querySelector('[name="destinataires"]');
+        const montantField = document.getElementById('transfertMontant');
+
+        const updatePreview = () => {
+            const raw = destinatairesField.value.trim();
+            const montant = parseFloat(montantField.value);
+            if (!raw || !montant || montant <= 0) {
+                preview.classList.add('d-none');
+                preview.innerHTML = '';
+                return;
+            }
+
+            const parts = raw
+                .replace(/\r/g, '\n')
+                .replace(/;/g, ',')
+                .split(/[\s,]+/)
+                .filter(Boolean)
+                .map(item => item.replace(/[^0-9]/g, ''))
+                .filter(Boolean);
+
+            const unique = [...new Set(parts)];
+            if (unique.length === 0) {
+                preview.classList.add('d-none');
+                preview.innerHTML = '';
+                return;
+            }
+
+            const count = unique.length;
+            const share = Math.floor((montant * 100) / count) / 100;
+            const remainder = (montant - share * count).toFixed(2);
+            const shareText = count > 1
+                ? `${share.toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} Ar par destinataire, avec un reste de ${remainder} Ar ajouté au dernier destinataire.`
+                : `${montant.toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} Ar pour le destinataire.`;
+
+            preview.classList.remove('d-none');
+            preview.innerHTML = `
+                <strong>${count}</strong> destinataire(s) détecté(s).<br>
+                Montant estimé par destinataire : ${shareText}
+                <br><small class="text-muted">Le montant total sera divisé entre tous les destinataires valides.</small>
+            `;
+        };
+
+        destinatairesField.addEventListener('input', updatePreview);
+        montantField.addEventListener('input', updatePreview);
+
+        transfertForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
             fetch('/index.php/client/doTransfert', {
@@ -56,11 +115,13 @@
                     resultDiv.innerHTML = `
                         <div class="alert alert-success">
                             <i class="fas fa-check-circle"></i> ${data.message}<br>
-                            <strong>Frais : ${data.frais}</strong><br>
+                            <strong>Frais totaux : ${data.frais}</strong><br>
+                            <strong>Total débité : ${data.total_debite}</strong><br>
                             <strong>Nouveau solde : ${data.nouveau_solde}</strong>
                         </div>
                     `;
-                    document.getElementById('transfertForm').reset();
+                    transfertForm.reset();
+                    preview.classList.add('d-none');
                 } else {
                     resultDiv.innerHTML = `
                         <div class="alert alert-danger">
