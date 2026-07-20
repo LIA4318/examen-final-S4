@@ -65,3 +65,62 @@
 - Test des opérations (dépôt, retrait, transfert)
 - Test des clients
 
+### COTE CLIENT
+## Authentification client (OK)
+### [Yrielle]
+- Page de login automatique par numéro de téléphone (`ClientController::login()`, vue `login.php`)
+- Traitement de la connexion (`doLogin()`) : nettoyage du numéro, recherche du client
+- Création automatique du compte si le numéro n'existe pas (pas d'inscription préalable requise)
+- Stockage des infos client en session (`client_id`, `client_telephone`, `client_solde`)
+- Redirection automatique vers le dashboard si déjà connecté
+- Déconnexion (`logout()`)
+
+## Consultation du solde (OK)
+### [Yrielle]
+- Affichage du solde sur le dashboard (`dashboard.php`)
+- Endpoint API `getSolde()` pour récupérer le solde en JSON
+- Mise à jour dynamique du solde en session après chaque opération
+
+## Dépôt (OK)
+### [Yrielle]
+- Formulaire de dépôt intégré au dashboard (AJAX, sans rechargement de page)
+- Traitement automatique du dépôt (`doDepot()`)
+- Vérification du montant (non vide, positif)
+- Enregistrement de l'opération via `OperationModel::createOperation()`
+- Mise à jour du solde client et réponse JSON avec confirmation
+
+## Retrait (OK)
+### [Yrielle]
+- Formulaire de retrait intégré au dashboard (AJAX)
+- Traitement automatique du retrait (`doRetrait()`)
+- Calcul automatique des frais via `FraisBaremeModel::calculerFrais()`
+- Vérification du solde suffisant (montant + frais)
+- Enregistrement de l'opération et mise à jour du solde
+- Retour JSON avec solde mis à jour et frais appliqués
+
+## Transfert (OK)
+### [Yrielle]
+- Formulaire de transfert intégré au dashboard (numéro destinataire + montant, AJAX)
+- Traitement automatique du transfert (`doTransfert()`)
+- Vérification de l'existence du compte destinataire
+- Vérification qu'on ne se transfère pas à soi-même
+- Calcul automatique des frais
+- Vérification du solde suffisant
+- Débit de l'expéditeur et crédit du destinataire (transaction SQL avec rollback en cas d'échec)
+- Retour JSON avec confirmation, solde et frais
+
+## Historique des opérations (OK)
+### [Yrielle]
+- Récupération de l'historique via `OperationModel::getClientHistory()`
+- Affichage sur le dashboard (10 dernières opérations)
+- Page dédiée `historique.php` (100 dernières opérations)
+- Affichage type d'opération (badge coloré), montant, frais, date
+- Affichage du destinataire pour les transferts
+- Gestion de l'affichage si aucune transaction
+
+## Vues client (OK)
+### [Yrielle]
+- login.php - Page de connexion automatique
+- dashboard.php - Solde + formulaires dépôt/retrait/transfert en AJAX + accès historique
+- historique.php - Tableau complet des transactions
+
