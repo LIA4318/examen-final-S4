@@ -12,8 +12,7 @@ class OperateurModel extends Model
     protected $returnType = 'array';
     protected $useSoftDeletes = false;
     protected $protectFields = true;
-    protected $allowedFields = ['nom', 'code', 'prefixe', 'commission_pourcentage', 'actif'];
-
+    protected $allowedFields = ['nom', 'code', 'prefixe', 'commission_pourcentage', 'reduction_pourcentage', 'actif'];
     protected $validationRules = [
         'nom' => 'required|max_length[100]',
         'code' => 'required|max_length[20]|is_unique[operateurs.code]',

@@ -46,6 +46,11 @@
                             <button type="submit" class="btn btn-primary btn-lg w-100">
                                 <i class="fas fa-check me-2"></i> Effectuer le transfert
                             </button>
+                               <div class="mb-4">
+                                <div id="preview" class="alert alert-secondary d-none"></div>
+                                <label class="form-label"> les memes operateurs peuvent beneficier d'une remise de 20% sur les frais</label>
+
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -97,7 +102,10 @@
                 <br><small class="text-muted">Le montant total sera divisé entre tous les destinataires valides.</small>
             `;
         };
-
+if (data.reduction > 0) {
+    resultDiv.innerHTML += `<br><strong>Réduction :</strong> ${data.reduction}%`;
+    resultDiv.innerHTML += `<br><strong>Frais après réduction :</strong> ${data.frais_apres_reduction}`;
+}
         destinatairesField.addEventListener('input', updatePreview);
         montantField.addEventListener('input', updatePreview);
 

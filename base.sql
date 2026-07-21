@@ -199,3 +199,9 @@ GROUP BY o.nom;
 
 ALTER TABLE transactions ADD COLUMN frais_commission DECIMAL(15,2) DEFAULT 0;
 ALTER TABLE transactions ADD COLUMN operateur_destinataire_id INTEGER;
+
+ALTER TABLE operateurs ADD COLUMN reduction_pourcentage DECIMAL(5,2) DEFAULT 0;
+UPDATE operateurs SET reduction_pourcentage = 10 WHERE code = 'OM' OR code = 'OM2';
+UPDATE operateurs SET reduction_pourcentage = 5 WHERE code = 'AM';
+UPDATE operateurs SET reduction_pourcentage = 8 WHERE code = 'TM';
+UPDATE operateurs SET reduction_pourcentage = 7 WHERE code = 'MV';
