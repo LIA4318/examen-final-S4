@@ -19,7 +19,12 @@ class ConfigurationModel extends Model
      */
     public function getPrefixes()
     {
-        $results = $this->findAll();
+        try {
+            $results = $this->findAll();
+        } catch (\Exception $e) {
+            return ['033', '037']; // Préfixes par défaut si la table n'existe pas encore
+        }
+
         if (empty($results)) {
             return ['033', '037']; // Préfixes par défaut
         }
