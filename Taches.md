@@ -183,3 +183,10 @@
 - Table `envois_multiples` créée pour tracer l'envoi global (client, montant total, nombre de destinataires, statut)
 - Table `envois_multiples_details` créée pour tracer chaque destinataire individuellement (numéro, montant, statut, date d'exécution)
 - Logique backend vérifiée dans `ClientController::doTransfert()` : parsing des numéros, vérification du même opérateur, division du montant, création des entrées `envois_multiples` / `envois_multiples_details`
+
+
+creation table : pourcentage_promo
+
+
+y a une pourcentade de reduction (promtion ) pour les transfert pour les memes operateurs,
+porcentage stocker en base

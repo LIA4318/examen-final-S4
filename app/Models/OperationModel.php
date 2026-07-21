@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use CodeIgniter\Model;
-
+use App\Models\OperateurModel;
 class OperationModel extends Model
 {
     protected $table            = 'transactions';
@@ -401,4 +401,29 @@ class OperationModel extends Model
             'commission' => $commission
         ];
     }
-}
+    //calcul ppromotion meme operateur 
+  public function getReduction($operateurId)
+    {
+        $operateur = $this->find($operateurId);
+        return $operateur ? $operateur['reduction_pourcentage'] : 0;
+    }
+
+    /**
+     * Vérifier si deux numéros sont du même opérateur
+     */
+    public function isSameOperateur($telephone1, $telephone2)
+    {
+        $prefixe1 = substr($telephone1, 0, 3);
+        $prefixe2 = substr($telephone2, 0, 3);
+        
+        $op1 = $this->where('prefixe', $prefixe1)->first();
+        $op2 = $this->where('prefixe', $prefixe2)->first();
+        
+        if (!$op1 || !$op2) {
+            return false;
+        }
+        
+        // Vérifier si c'est le même opérateur (même nom)
+        return $op1['nom'] === $op2['nom'];
+    }
+    }

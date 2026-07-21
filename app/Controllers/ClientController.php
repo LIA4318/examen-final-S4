@@ -261,6 +261,29 @@ class ClientController extends BaseController
             }
 
             $destinataireClients[] = $destClient;
+            // Récupérer le numéro de l'expéditeur
+$senderTelephone = $this->session->get('client_telephone');
+
+// Vérifier si c'est le même opérateur pour chaque destinataire
+$operateurModel = new OperateurModel();
+$reduction = 0;
+
+foreach ($destinataires as $destinataire) {
+    if ($operateurModel->isSameOperateur($senderTelephone, $destinataire)) {
+        // Même opérateur : appliquer la réduction
+        $operateur = $operateurModel->getOperateurByTelephone($senderTelephone);
+        $reduction = $operateur['reduction_pourcentage'] ?? 0;
+        break; // Même réduction pour tous si même opérateur
+    }
+}
+
+// Appliquer la réduction sur les frais
+if ($reduction > 0) {
+    $totalFrais = $totalFrais * (1 - $reduction / 100);
+    $fraisParDestinataire = array_map(function($f) use ($reduction) {
+        return $f * (1 - $reduction / 100);
+    }, $fraisParDestinataire);
+}
         }
 
         // Diviser le montant entre les destinataires
