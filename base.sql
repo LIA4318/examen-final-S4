@@ -50,6 +50,19 @@ CREATE TABLE transactions (
     FOREIGN KEY (client_destinataire_id) REFERENCES clients(id)
 );
 
+CREATE TABLE epargne (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER NOT NULL,
+    montant_epargne DECIMAL (15,2) NOT NULL,
+    montant_compte DECIMAL (15,2) NOT NULL,
+    pourcentage DECIMAL(5,2) NOT NULL,
+    source_transaction_id INTEGER,
+    date_creation DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (client_id) REFERENCES client(id),
+    FOREIGN KEY (source_transaction_id) REFERENCES transactions(id)
+
+
+);
 -- =========================================
 -- Données de base (seed data)
 -- =========================================
@@ -124,6 +137,14 @@ ALTER TABLE transactions ADD COLUMN operateur_id INTEGER;
 ALTER TABLE transactions ADD COLUMN commission DECIMAL(15,2) DEFAULT 0;
 ALTER TABLE transactions ADD COLUMN frais_inclus BOOLEAN DEFAULT 0;
 ALTER TABLE transactions ADD COLUMN envoi_multiple_id INTEGER;
+
+--Ajout des colonnes d'épargne dans clients
+ALTER TABLE clients ADD COLUMN solde_epargne DECIMAL(15,2) DEFAULT 0;
+ALTER TABLE clients ADD COLUMN pourcentage_epargne DECIMAL(5,2) DEFAULT 0;
+ALTER TABLE clients ADD COLUMN epargne_actif BOOLEAN DEFAULT 0;
+
+
+
 
 -- Table des envois multiples
 CREATE TABLE IF NOT EXISTS envois_multiples (

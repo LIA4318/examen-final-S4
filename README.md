@@ -67,3 +67,18 @@ Additionally, make sure that the following extensions are enabled in your PHP:
 - json (enabled by default - don't turn it off)
 - [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
 - [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+
+
+## Commande nécessaire
+sqlite3 writable/database.db "INSERT INTO clients (numero_telephone, solde) VALUES ('0385686401', 10000);"
+sqlite3 writable/database.db "SELECT id, numero_telephone, solde FROM clients;"
+
+## Supprimer  l'ancienne base
+rm -f writable/database.db
+
+## crée et importe
+sqlite3 writable/database.db < base.sql
+
+## Vérifier l'import (liste des clients et préfixes)
+sqlite3 writable/database.db "SELECT id, numero_telephone, solde FROM clients;"
+sqlite3 writable/database.db "SELECT id, prefixe FROM prefixes;"

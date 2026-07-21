@@ -23,6 +23,15 @@ class ClientModel extends Model
         'solde' => 'permit_empty|numeric'
     ];
 
+    protected $allowedFields = [
+        'numero_telephone',
+        'solde',
+        'solde_epargne',
+        'pourcentage_epargne',
+        'epargne actif',
+        'date_creation'
+    ];
+
     protected $validationMessages = [
         'numero_telephone' => [
             'required' => 'Le numéro de téléphone est obligatoire',
@@ -63,5 +72,23 @@ class ClientModel extends Model
             'total' => $this->countAll(),
             'total_solde' => $this->selectSum('solde')->get()->getRow()->solde ?? 0
         ];
+    }
+
+    public function updatePourcentageEpargne($clientId, $pourcentage)
+    {
+        $pourcentage = max(0, min(100, $pourcentage));
+        return $this -> update($clientId, [
+            'pourcentage_epargne' => $pourcentage,
+            'epargne_actif' => $pourcentage > 0 ? 1 : 0
+        ]);
+    }
+
+    public function getSoldeTotal($clientId)
+    {
+        $client = $this->find($clientId);
+        if (!$client) {
+            return 0;
+        }
+        return $client['solde'] + ($client['solde_epargne'] ?? 0);
     }
 }

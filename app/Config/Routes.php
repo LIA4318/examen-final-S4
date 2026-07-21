@@ -16,6 +16,10 @@ $routes->set404Override();
 $routes->setAutoRoute(true);
 
 $routes->get('/', 'Home::index');
+$routes->get('getClient', 'ApiOperateur::getClient');
+$routes->get('getClient/(:segment)', 'ApiOperateur::getClient/$1');
+$routes->get('home/getClient', 'ApiOperateur::getClient');
+$routes->get('home/getClient/(:segment)', 'ApiOperateur::getClient/$1');
 
 // ============================================
 // ROUTES OPÉRATEUR

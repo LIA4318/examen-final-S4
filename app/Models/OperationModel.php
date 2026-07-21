@@ -87,6 +87,7 @@ class OperationModel extends Model
             'date_transaction' => date('Y-m-d H:i:s')
         ];
 
+
         // Gérer selon le type
         switch ($typeLibelle) {
             case 'depot':
@@ -175,7 +176,23 @@ class OperationModel extends Model
             'nouveau_solde' => $nouveauSolde,
             'frais_appliques' => $frais
         ];
+         
+        case 'depot';
+        $client = $clientModel->find($data['client_id']);
+        $pourcentageEpargne = $client['pourcentage_epargne'] ?? 0;
+        
+        if ($client['epargne_actif'] && $pourcentage > 0) {
+            $montantEpargne = ($data['montant'] * $pourcentageEpargne) / 100;
+            $montantCompte = $data['montant'] - $montantEpargne;
+
+            $nouveauSolde = $client['solde'] + $montantCompte;
+            $nouveauSoldeEpargne = ($client['solde_epargne'] ?? 0) + $montantEpargne; 
+        }
+        
+    } else { 
+        $nouveauSolde = $client['solde'] + data['montant'];
     }
+    break;
 
     /**
      * Récupérer l'historique d'un client

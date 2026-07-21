@@ -43,8 +43,11 @@ class ApiOperateur extends BaseController
     /**
      * Récupérer la situation d'un client
      */
-    public function getClient($telephone)
+    public function getClient($telephone = null)
     {
+        if (!$telephone) {
+            return $this->failValidationErrors('Téléphone du client requis');
+        }
         $client = $this->clientModel->findByTelephone($telephone);
         if (!$client) {
             return $this->failNotFound('Client non trouvé');
