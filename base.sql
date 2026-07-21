@@ -99,7 +99,7 @@ INSERT INTO clients (numero_telephone, solde) VALUES
 ('0371234567', 15000),
 ('0343456789', 20000),
 ('0341234567', 5000),
-('0381434567', 10000),
+('0385686401', 10000),
 ('0331234567', 10000),
 ('0334567890', 15000);
 
@@ -148,8 +148,54 @@ CREATE TABLE IF NOT EXISTS envois_multiples_details (
 );
 
 -- Insertion des opérateurs par défaut
-INSERT OR IGNORE INTO operateurs (nom, code, prefixe, commission_pourcentage) VALUES 
-('Opérateur Principal', 'MOMO', '033,034,037', 0),
-('Orange', 'ORANGE', '032,037', 2.5),
-('Telma', 'TELMA', '034,038', 2.0),
-('Airtel', 'AIRTEL', '033', 3.0);
+INSERT INTO operateurs (nom, code, prefixe, commission_pourcentage, actif) VALUES 
+('Orange Money', 'OM', '032', 2.5, 1),
+('Orange Money', 'OM2', '037', 2.5, 1),
+('Airtel Money', 'AM', '033', 2.5, 1),
+('Telma Money', 'TM', '034', 2.0, 1),
+('MVola', 'MV', '038', 2.0, 1);
+
+
+
+DROP VIEW IF EXISTS v_stats_frais_operateur;
+CREATE VIEW v_stats_frais_operateur AS
+SELECT 
+    o.nom as operateur,
+    COUNT(t.id) as nb_transactions,
+    SUM(t.montant) as total_montant,
+    SUM(t.frais) as total_frais,
+    SUM(t.frais_commission) as total_commission,
+    SUM(t.frais + t.frais_commission) as total_gains
+FROM transactions t
+LEFT JOIN operateurs o ON o.id = t.operateur_id
+WHERE t.frais > 0 OR t.frais_commission > 0
+GROUP BY o.nom;
+
+DROP VIEW IF EXISTS v_stats_frais_autres_operateurs;
+CREATE VIEW v_stats_frais_autres_operateurs AS
+SELECT 
+    o.nom as operateur_destinataire,
+    COUNT(t.id) as nb_transactions,
+    SUM(t.montant) as total_montant,
+    SUM(t.frais) as total_frais,
+    SUM(t.frais_commission) as total_commission
+FROM transactions t
+LEFT JOIN operateurs o ON o.id = t.operateur_destinataire_id
+WHERE t.operateur_destinataire_id IS NOT NULL
+GROUP BY o.nom;
+
+DROP VIEW IF EXISTS v_montants_a_envoyer;
+CREATE VIEW v_montants_a_envoyer AS
+SELECT 
+    o.nom as operateur,
+    SUM(t.montant) as montant_total,
+    SUM(t.frais_commission) as commission_totale,
+    COUNT(t.id) as nb_transactions
+FROM transactions t
+LEFT JOIN operateurs o ON o.id = t.operateur_destinataire_id
+WHERE t.operateur_destinataire_id IS NOT NULL
+AND t.statut = 'SUCCES'
+GROUP BY o.nom;
+
+ALTER TABLE transactions ADD COLUMN frais_commission DECIMAL(15,2) DEFAULT 0;
+ALTER TABLE transactions ADD COLUMN operateur_destinataire_id INTEGER;

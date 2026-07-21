@@ -264,4 +264,124 @@ class OperationModel extends Model
             LIMIT ?
         ", [$limit])->getResultArray();
     }
+        /**
+     * Récupérer les gains par opérateur (V2)
+     */
+      public function getGainsParOperateur()
+    {
+        $db = \Config\Database::connect();
+        try {
+            return $db->query("
+                SELECT 
+                    o.nom as operateur,
+                    COUNT(t.id) as nb_transactions,
+                    SUM(t.frais) as total_frais,
+                    SUM(t.frais_commission) as total_commission,
+                    SUM(t.frais + t.frais_commission) as total_gains
+                FROM transactions t
+                LEFT JOIN operateurs o ON o.id = t.operateur_destinataire_id
+                WHERE (t.frais > 0 OR t.frais_commission > 0)
+                GROUP BY o.nom
+                ORDER BY total_gains DESC
+            ")->getResultArray();
+        } catch (\Exception $e) {
+            return ['error' => $e->getMessage()];
+        }
+    }
+    /**
+     * Récupérer les montants à envoyer à chaque opérateur (V2)
+     */
+      public function getMontantsAEnvoyer()
+    {
+        $db = \Config\Database::connect();
+        try {
+            return $db->query("
+                SELECT 
+                    o.nom as operateur,
+                    o.prefixe,
+                    SUM(t.montant) as montant_total,
+                    SUM(t.frais_commission) as commission_totale,
+                    COUNT(t.id) as nb_transactions
+                FROM transactions t
+                LEFT JOIN operateurs o ON o.id = t.operateur_destinataire_id
+                WHERE t.operateur_destinataire_id IS NOT NULL
+                GROUP BY o.nom
+                ORDER BY montant_total DESC
+            ")->getResultArray();
+        } catch (\Exception $e) {
+            return ['error' => $e->getMessage()];
+        }
+    }
+    /**
+     * Créer un transfert avec opérateur destinataire (V2)
+     */
+    public function createTransfertWithOperateur($data)
+    {
+        $clientModel = new ClientModel();
+        $operateurModel = new OperateurModel();
+        
+        $client = $clientModel->find($data['client_id']);
+        if (!$client) {
+            return ['success' => false, 'message' => 'Client non trouvé'];
+        }
+
+        $typeOpModel = new TypeOperationModel();
+        $typeOp = $typeOpModel->find($data['type_operation_id']);
+        if (!$typeOp) {
+            return ['success' => false, 'message' => 'Type d\'opération invalide'];
+        }
+
+        $typeLibelle = strtolower($typeOp['libelle']);
+        $nouveauSolde = $client['solde'];
+        $frais = $data['frais'] ?? 0;
+        $commission = 0;
+
+        if ($typeLibelle === 'transfert' && isset($data['telephone_destinataire'])) {
+            $telephoneDest = preg_replace('/[^0-9]/', '', $data['telephone_destinataire']);
+            $operateurDest = $operateurModel->getOperateurByTelephone($telephoneDest);
+            
+            if ($operateurDest) {
+                $data['operateur_destinataire_id'] = $operateurDest['id'];
+                $commission = ($data['montant'] * $operateurDest['commission_pourcentage']) / 100;
+                $data['frais_commission'] = $commission;
+            }
+            
+            $destinataire = $clientModel->findByTelephone($telephoneDest);
+            if ($destinataire) {
+                $data['destinataire_id'] = $destinataire['id'];
+            }
+        }
+
+        $totalADebiter = $data['montant'] + $frais + $commission;
+        if ($client['solde'] < $totalADebiter) {
+            return ['success' => false, 'message' => 'Solde insuffisant'];
+        }
+        $nouveauSolde -= $totalADebiter;
+
+        $db = \Config\Database::connect();
+        $db->transStart();
+
+        $operationId = $this->insert($data);
+        if (!$operationId) {
+            $db->transRollback();
+            return ['success' => false, 'message' => 'Erreur lors de l\'enregistrement'];
+        }
+
+        $clientModel->update($data['client_id'], ['solde' => $nouveauSolde]);
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return ['success' => false, 'message' => 'Erreur lors de la transaction'];
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Transfert réussi',
+            'operation_id' => $operationId,
+            'nouveau_solde' => $nouveauSolde,
+            'frais_appliques' => $frais,
+            'commission' => $commission
+        ];
+    }
 }

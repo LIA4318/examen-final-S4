@@ -15,7 +15,6 @@ $routes->setTranslateURIDashes(false);
 $routes->set404Override();
 $routes->setAutoRoute(true);
 
-// Route par défaut
 $routes->get('/', 'Home::index');
 
 // ============================================
@@ -52,6 +51,17 @@ $routes->group('operateur', function($routes) {
     
     // Statistiques
     $routes->get('statistiques', 'OperateurController::statistiques');
+    
+    // ============================================
+    // VERSION 2 - NOUVELLES ROUTES DANS LE GROUPE
+    // ============================================
+    $routes->get('situation-gains', 'OperateurController::situationGains');
+    $routes->get('operateurs', 'OperateurController::operateurs');
+    $routes->get('create', 'OperateurController::createOperateur');
+    $routes->post('store', 'OperateurController::storeOperateur');
+    $routes->get('edit/(:num)', 'OperateurController::editOperateur/$1');
+    $routes->post('update/(:num)', 'OperateurController::updateOperateur/$1');
+    $routes->get('delete/(:num)', 'OperateurController::deleteOperateur/$1');
 });
 
 // ============================================
@@ -70,6 +80,7 @@ $routes->group('client', function($routes) {
     $routes->get('historique', 'ClientController::historique');
     $routes->get('logout', 'ClientController::logout');
     $routes->get('getSolde', 'ClientController::getSolde');
+    $routes->get('debug', 'DebugController::index');
 });
 
 // ============================================
@@ -81,5 +92,4 @@ $routes->group('api', function($routes) {
     $routes->post('calculer-frais', 'ApiOperateur::calculerFrais');
 });
 
-// Route de test
 $routes->get('api-test', 'ApiTestController::index');
