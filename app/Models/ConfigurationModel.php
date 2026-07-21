@@ -16,10 +16,12 @@ class ConfigurationModel extends Model
 
     public function getPrefixes()
     {
-        // Récupérer les préfixes depuis la table operateurs
-        $db = \Config\Database::connect();
-        $results = $db->query("SELECT DISTINCT prefixe FROM operateurs WHERE actif = 1")->getResultArray();
-        
+        try {
+            $results = $this->findAll();
+        } catch (\Exception $e) {
+            return ['033', '037']; // Préfixes par défaut si la table n'existe pas encore
+        }
+
         if (empty($results)) {
             return ['032', '033', '034', '037', '038']; // Préfixes par défaut
         }
